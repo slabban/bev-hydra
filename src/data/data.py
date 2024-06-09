@@ -12,7 +12,11 @@ from nuscenes.utils.splits import create_splits_scenes
 from nuscenes.utils.data_classes import Box
 # from lyft_dataset_sdk.lyftdataset import LyftDataset
 
+<<<<<<< HEAD
 from utils.geometry import (
+=======
+from src.utils.geometry import (
+>>>>>>> 17fe6b3 (Port over essential fiery codebase:)
     resize_and_crop_image,
     update_intrinsics,
     calculate_birds_eye_view_parameters,
@@ -21,8 +25,13 @@ from utils.geometry import (
     mat2pose_vec,
     invert_matrix_egopose_numpy,
 )
+<<<<<<< HEAD
 from utils.instance import convert_instance_mask_to_center_and_offset_label
 from utils.lyft_splits import TRAIN_LYFT_INDICES, VAL_LYFT_INDICES
+=======
+from src.utils.instance import convert_instance_mask_to_center_and_offset_label
+from src.utils.lyft_splits import TRAIN_LYFT_INDICES, VAL_LYFT_INDICES
+>>>>>>> 17fe6b3 (Port over essential fiery codebase:)
 
 
 class FuturePredictionDataset(torch.utils.data.Dataset):
@@ -30,10 +39,15 @@ class FuturePredictionDataset(torch.utils.data.Dataset):
         self.nusc = nusc
         self.is_train = is_train
         self.cfg = cfg
+<<<<<<< HEAD
 
         self.is_lyft = False
 
 
+=======
+        self.is_lyft = False
+
+>>>>>>> 17fe6b3 (Port over essential fiery codebase:)
         if self.is_lyft:
             self.dataroot = self.nusc.data_path
         else:
