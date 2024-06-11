@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import matplotlib.pylab
 
-from fiery.utils.instance import predict_instance_segmentation_and_trajectories
+from src.utils.instance import predict_instance_segmentation_and_trajectories
 
 DEFAULT_COLORMAP = matplotlib.pylab.cm.jet
 

@@ -2,13 +2,13 @@ import torch
 import torch.nn as nn
 from lightning import LightningModule
 
-from models.components.encoder import Encoder
-from models.components.temporal_model import TemporalModelIdentity, TemporalModel
-from models.components.distributions import DistributionModule
-from models.components.future_prediction import FuturePrediction
-from models.components.decoder import Decoder
-from utils.network import pack_sequence_dim, unpack_sequence_dim, set_bn_momentum
-from utils.geometry import cumulative_warp_features, calculate_birds_eye_view_parameters, VoxelsSumming
+from src.models.components.encoder import Encoder
+from src.models.components.temporal_model import TemporalModelIdentity, TemporalModel
+from src.models.components.distributions import DistributionModule
+from src.models.components.future_prediction import FuturePrediction
+from src.models.components.decoder import Decoder
+from src.utils.network import pack_sequence_dim, unpack_sequence_dim, set_bn_momentum
+from src.utils.geometry import cumulative_warp_features, calculate_birds_eye_view_parameters, VoxelsSumming
 
 
 class Fiery(nn.Module):
