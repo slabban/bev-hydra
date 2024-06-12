@@ -1,18 +1,20 @@
 # @package _global_
 
+# this experiment configuration is used to override parameters from main config
+# and to version control best hyperparameters for each combination of model and dataset
 # to execute this experiment run:
 # python train.py experiment=example
 
 defaults:
-  - override /data: mnist
-  - override /model: mnist
+  - override /data: # insert configuration to override
+  - override /model: # insert configuration to override
   - override /callbacks: default
   - override /trainer: default
 
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
 
-tags: ["mnist", "simple_dense_net"]
+tags: ["config name", "model"]
 
 seed: 12345
 
@@ -36,6 +38,6 @@ data:
 logger:
   wandb:
     tags: ${tags}
-    group: "mnist"
+    group: "config name"
   aim:
-    experiment: "mnist"
+    experiment: "config name"
