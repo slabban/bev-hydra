@@ -140,13 +140,20 @@ class Damp(nn.Module):
         return points
 
     def encoder_forward(self, x):
-        # batch, n_cameras, channels, height, width
-        b, n, c, h, w = x.shape
+        """
+        Apply the encoder forward pass to the input tensor.
+
+        Args:
+            x (torch.Tensor): The input tensor with shape (batch_size, n_cameras, channels, height, width).
+
+        Returns:
+            torch.Tensor: The output tensor with shape (batch_size, n_cameras, depth, height, width, channels).
+        """
 
         x = x.view(b * n, c, h, w)
-        x = self.encoder(x)
-        x = x.view(b, n, *x.shape[1:])
-        x = x.permute(0, 1, 3, 4, 5, 2)
+        x = self.encoder(x) # with depth, the shape is (batch_size, channels, depth, height, width)
+        x = x.view(b, n, *x.shape[1:]) # shape is (batch_size, n_cameras, channels, depth, height, width)
+        x = x.permute(0, 1, 3, 4, 5, 2) # shape is (batch_size, n_cameras, depth, height, width, channels)
 
         return x
 
@@ -215,8 +222,7 @@ class Damp(nn.Module):
             bev_feature = bev_feature.permute((0, 3, 1, 2))
             bev_feature = bev_feature.squeeze(0)
 
-            output[b] = bev_feature
-
+            output[b] = bev_feature 
         return output
 
     def calculate_birds_eye_view_features(self, x, intrinsics, extrinsics):
@@ -229,7 +235,7 @@ class Damp(nn.Module):
             extrinsics (torch.Tensor): The extrinsic parameters of the cameras with shape (batch_size, sequence_length, number_of_cameras, 4, 4).
 
         Returns:
-            torch.Tensor: The bird's-eye view features with shape (batch_size, sequence_length, channels, height, width).
+            torch.Tensor: The bird's-eye view features with shape (batch_size, sequence_length, channels, bev_dimension[0], bev_dimension[1]).
         """
         b, s, n, c, h, w = x.shape
         # Reshape
@@ -238,9 +244,9 @@ class Damp(nn.Module):
         extrinsics = pack_sequence_dim(extrinsics)
 
         geometry = self.get_geometry(intrinsics, extrinsics)
-        x = self.encoder_forward(x)
-        x = self.projection_to_birds_eye_view(x, geometry)
-        x = unpack_sequence_dim(x, b, s)
+        x = self.encoder_forward(x) # (batch_size, n_cameras, depth, height, width, channels)
+        x = self.projection_to_birds_eye_view(x, geometry)  # (batch, c, self.bev_dimension[0], self.bev_dimension[1]) 
+        x = unpack_sequence_dim(x, b, s) # (batch, s, c, self.bev_dimension[0], self.bev_dimension[1])
         return x
 
     def distribution_forward(
