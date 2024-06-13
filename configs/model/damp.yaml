@@ -1,0 +1,104 @@
+
+_target_: src.models.damp.Damp
+
+# compile model for faster training with pytorch 2.0
+compile: false
+
+encoder:
+  _target_: src.models.components.encoder.Encoder
+  _partial_: true
+  out_channels: 64
+  use_depth_distribution: true
+  downsample: 8
+  name: efficientnet-b0
+
+
+lift:
+  # image to BEV lifting parameters
+  # [min, max, step]
+  x_bound: [-50.0, 50.0, 0.5] # Forward
+  y_bound: [-50.0, 50.0, 0.5] # Sides
+  z_bound: [-10.0, 10.0, 20.0] # Height
+  d_bound: [2.0, 50.0, 1.0]
+
+image:
+  final_dim: [224, 480]
+  resize_scale: 0.3
+  top_crop: 46
+  original_height: 900
+  original_width: 1600
+  names: [CAM_FRONT_LEFT, CAM_FRONT, CAM_FRONT_RIGHT, CAM_BACK_LEFT, CAM_BACK, CAM_BACK_RIGHT]
+
+
+
+
+# general configuration
+# _C = CN()
+# _C.LOG_DIR = 'tensorboard_logs'
+# _C.TAG = 'default'
+
+
+
+# pretrained model
+# _C.PRETRAINED = CN()
+# _C.PRETRAINED.LOAD_WEIGHTS = False
+# _C.PRETRAINED.PATH = ''
+
+
+
+# # general receptive field
+# _C.TIME_RECEPTIVE_FIELD = 3  # how many frames of temporal context (1 for single timeframe)
+# # general future frames
+# _C.N_FUTURE_FRAMES = 4  # how many time steps into the future to predict
+
+
+
+
+# TODO
+# _C.MODEL.TEMPORAL_MODEL = CN()
+# _C.MODEL.TEMPORAL_MODEL.NAME = 'temporal_block'  # type of temporal model
+# _C.MODEL.TEMPORAL_MODEL.START_OUT_CHANNELS = 64
+# _C.MODEL.TEMPORAL_MODEL.EXTRA_IN_CHANNELS = 0
+# _C.MODEL.TEMPORAL_MODEL.INBETWEEN_LAYERS = 0
+# _C.MODEL.TEMPORAL_MODEL.PYRAMID_POOLING = True
+# _C.MODEL.TEMPORAL_MODEL.INPUT_EGOPOSE = True
+
+# _C.MODEL.DISTRIBUTION = CN()
+# _C.MODEL.DISTRIBUTION.LATENT_DIM = 32
+# _C.MODEL.DISTRIBUTION.MIN_LOG_SIGMA = -5.0
+# _C.MODEL.DISTRIBUTION.MAX_LOG_SIGMA = 5.0
+
+# _C.MODEL.FUTURE_PRED = CN()
+# _C.MODEL.FUTURE_PRED.N_GRU_BLOCKS = 3
+# _C.MODEL.FUTURE_PRED.N_RES_LAYERS = 3
+
+# _C.MODEL.DECODER = CN()
+
+# _C.MODEL.BN_MOMENTUM = 0.1
+# _C.MODEL.SUBSAMPLE = False  # Subsample frames for Lyft
+
+# # semantic segmentation
+# _C.SEMANTIC_SEG = CN()
+# _C.SEMANTIC_SEG.WEIGHTS = [1.0, 2.0]  # per class cross entropy weights (bg, dynamic)
+# _C.SEMANTIC_SEG.USE_TOP_K = True  # backprop only top-k hardest pixels
+# _C.SEMANTIC_SEG.TOP_K_RATIO = 0.25
+
+# instance segmentation
+# _C.INSTANCE_SEG = CN()
+# _C.INSTANCE_FLOW = CN()
+# _C.INSTANCE_FLOW.ENABLED = True
+
+
+# # probabilistic module
+# _C.PROBABILISTIC = CN()
+# _C.PROBABILISTIC.ENABLED = True  # learn a distribution over futures
+# _C.PROBABILISTIC.WEIGHT = 100.0
+# _C.PROBABILISTIC.FUTURE_DIM = 6  # number of dimension added (future flow, future centerness, offset, seg)
+
+# _C.FUTURE_DISCOUNT = 0.95
+
+# _C.OPTIMIZER = CN()
+# _C.OPTIMIZER.LR = 3e-4
+# _C.OPTIMIZER.WEIGHT_DECAY = 1e-7
+# _C.GRAD_NORM_CLIP = 5
+

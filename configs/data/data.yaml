@@ -1,0 +1,7 @@
+_target_: src.data.data.FuturePredictionDataset
+data_root: ${paths.data_dir} 
+version: 'trainval'
+name: 'nuscenes' # should be redundant
+ignore_index: 255
+batch_size: 128 # Needs to be divisible by the number of devices (e.g., if in a distributed setup)
+

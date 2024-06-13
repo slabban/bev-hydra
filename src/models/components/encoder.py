@@ -91,8 +91,20 @@ class Encoder(nn.Module):
         return x
 
     def forward(self, x):
-        x = self.get_features(x)  # get feature vector
+        """
+        Forward pass of the model.
 
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch_size, channels, height, width).
+
+        Returns:
+            torch.Tensor: Output tensor of shape (batch_size, channels, depth, height, width) if use_depth_distribution is True,
+                          otherwise (batch_size, channels, depth, 1, height, width).
+
+        This function first applies the depth_layer to the input tensor x. Then, if use_depth_distribution is True, it calculates the softmax of the first self.D channels of x,
+        multiplies it element-wise with the remaining channels, and returns the result. If use_depth_distribution is False, it unsqueezes the last dimension of x,
+        repeats it self.D times along the depth dimension, and returns the result.
+        """
         x = self.depth_layer(x)  # feature and depth head
 
         if self.use_depth_distribution:
