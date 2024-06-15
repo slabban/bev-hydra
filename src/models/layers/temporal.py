@@ -12,7 +12,16 @@ class SpatialGRU(nn.Module):
     convolutional gated recurrent unit over the data"""
 
     def __init__(self, input_size, hidden_size, gru_bias_init=0.0, norm='bn', activation='relu'):
-        super().__init__()
+        """
+        Initializes the SpatialGRU class with the given parameters.
+
+        Args:
+            input_size (int): The number of input features.
+            hidden_size (int): The number of hidden features.
+            gru_bias_init (float, optional): The initial value for the GRU bias. Defaults to 0.0.
+            norm (str, optional): The type of normalization to apply. Defaults to 'bn'.
+            activation (str, optional): The type of activation function to apply. Defaults to 'relu'.
+        """
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.gru_bias_init = gru_bias_init
@@ -223,7 +232,15 @@ class TemporalBlock(nn.Module):
     """
 
     def __init__(self, in_channels, out_channels=None, use_pyramid_pooling=False, pool_sizes=None):
-        super().__init__()
+        """
+        Initializes a TemporalBlock.
+
+        Args:
+            in_channels (int): The number of input channels.
+            out_channels (Optional[int]): The number of output channels. Defaults to the number of input channels.
+            use_pyramid_pooling (bool, optional): Flag indicating whether to use spatio-temporal pyramid pooling.
+            pool_sizes (Optional[List[int]]): A list of kernel sizes for the pyramid pooling. Required if use_pyramid_pooling is True.
+        """
         self.in_channels = in_channels
         self.half_channels = in_channels // 2
         self.out_channels = out_channels or self.in_channels
@@ -265,6 +282,16 @@ class TemporalBlock(nn.Module):
             self.projection = None
 
     def forward(self, *inputs):
+        """
+        Performs the forward pass of the TemporalBlock.
+
+        Args:
+            *inputs (tuple[torch.Tensor]): Variable length argument list of input tensors.
+
+        Returns:
+            torch.Tensor: The output tensor after the forward pass. The output tensor has shape
+            (batch, out_channels, time - receptive_field + 1, height, width).
+        """
         (x,) = inputs
         x_paths = []
         for conv in self.convolution_paths:

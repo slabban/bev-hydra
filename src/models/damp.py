@@ -4,12 +4,14 @@ import torch.nn as nn
 # from lightning import LightningModule
 
 from src.models.components.encoder import Encoder
+from src.models.components.temporal_model import TemporalModel
 
 # from src.models.components.temporal_model import TemporalModelIdentity, TemporalModel
 # from src.models.components.distributions import DistributionModule
 # from src.models.components.future_prediction import FuturePrediction
 # from src.models.components.decoder import Decoder
 from src.utils.network import pack_sequence_dim, unpack_sequence_dim, set_bn_momentum
+from
 from src.utils.geometry import (
     cumulative_warp_features,
     calculate_birds_eye_view_parameters,
@@ -41,6 +43,23 @@ class Damp(nn.Module):
         self.encoder = Encoder(cfg=self.cfg.MODEL.ENCODER, D=self.depth_channels)
 
         set_bn_momentum(self, self.cfg.MODEL.BN_MOMENTUM)
+
+        # Temporal model
+        temporal_in_channels = self.encoder_out_channels + 6
+        self.temporal_model = TemporalModel(
+            temporal_in_channels,
+            self.receptive_field,
+            input_shape=self.bev_size,
+            start_out_channels=self.cfg.MODEL.TEMPORAL_MODEL.START_OUT_CHANNELS,
+            extra_in_channels=self.cfg.MODEL.TEMPORAL_MODEL.EXTRA_IN_CHANNELS,
+            n_spatial_layers_between_temporal_layers=self.cfg.MODEL.TEMPORAL_MODEL.INBETWEEN_LAYERS,
+            use_pyramid_pooling=self.cfg.MODEL.TEMPORAL_MODEL.PYRAMID_POOLING,
+        )
+
+        # Decoder
+        # self.decoder = Decoder(cfg=self.cfg.MODEL.DECODER, D=self.depth_channels)
+
+        # Future prediction
 
     def create_frustum(self):
         """
@@ -111,6 +130,9 @@ class Damp(nn.Module):
         # Lifting features and project to bird's-eye view
         x = self.calculate_birds_eye_view_features(image, intrinsics, extrinsics)
 
+        # temporal model
+        x = self.temporal_model(x, future_egomotion)
+
         output = x
 
         return output
@@ -150,6 +172,7 @@ class Damp(nn.Module):
             torch.Tensor: The output tensor with shape (batch_size, n_cameras, depth, height, width, channels).
         """
 
+        b, n, c, h, w = x.shape
         x = x.view(b * n, c, h, w)
         x = self.encoder(x) # with depth, the shape is (batch_size, channels, depth, height, width)
         x = x.view(b, n, *x.shape[1:]) # shape is (batch_size, n_cameras, channels, depth, height, width)
@@ -235,7 +258,7 @@ class Damp(nn.Module):
             extrinsics (torch.Tensor): The extrinsic parameters of the cameras with shape (batch_size, sequence_length, number_of_cameras, 4, 4).
 
         Returns:
-            torch.Tensor: The bird's-eye view features with shape (batch_size, sequence_length, channels, bev_dimension[0], bev_dimension[1]).
+            torch.Tensor: The bird's-eye view features with shape (batch_size, sequence_length, channels, 200, 200).
         """
         b, s, n, c, h, w = x.shape
         # Reshape
@@ -249,61 +272,3 @@ class Damp(nn.Module):
         x = unpack_sequence_dim(x, b, s) # (batch, s, c, self.bev_dimension[0], self.bev_dimension[1])
         return x
 
-    def distribution_forward(
-        self, present_features, future_distribution_inputs=None, noise=None
-    ):
-        """
-        Parameters
-        ----------
-            present_features: 5-D output from dynamics module with shape (b, 1, c, h, w)
-            future_distribution_inputs: 5-D tensor containing labels shape (b, s, cfg.PROB_FUTURE_DIM, h, w)
-            noise: a sample from a (0, 1) gaussian with shape (b, s, latent_dim). If None, will sample in function
-
-        Returns
-        -------
-            sample: sample taken from present/future distribution, broadcast to shape (b, s, latent_dim, h, w)
-            present_distribution_mu: shape (b, s, latent_dim)
-            present_distribution_log_sigma: shape (b, s, latent_dim)
-            future_distribution_mu: shape (b, s, latent_dim)
-            future_distribution_log_sigma: shape (b, s, latent_dim)
-        """
-        b, s, _, h, w = present_features.size()
-        assert s == 1
-
-        present_mu, present_log_sigma = self.present_distribution(present_features)
-
-        future_mu, future_log_sigma = None, None
-        if future_distribution_inputs is not None:
-            # Concatenate future labels to z_t
-            future_features = (
-                future_distribution_inputs[:, 1:].contiguous().view(b, 1, -1, h, w)
-            )
-            future_features = torch.cat([present_features, future_features], dim=2)
-            future_mu, future_log_sigma = self.future_distribution(future_features)
-
-        if noise is None:
-            if self.training:
-                noise = torch.randn_like(present_mu)
-            else:
-                noise = torch.zeros_like(present_mu)
-        if self.training:
-            mu = future_mu
-            sigma = torch.exp(future_log_sigma)
-        else:
-            mu = present_mu
-            sigma = torch.exp(present_log_sigma)
-        sample = mu + sigma * noise
-
-        # Spatially broadcast sample to the dimensions of present_features
-        sample = sample.view(b, s, self.latent_dim, 1, 1).expand(
-            b, s, self.latent_dim, h, w
-        )
-
-        output_distribution = {
-            "present_mu": present_mu,
-            "present_log_sigma": present_log_sigma,
-            "future_mu": future_mu,
-            "future_log_sigma": future_log_sigma,
-        }
-
-        return sample, output_distribution
