@@ -3,9 +3,9 @@ import torch.nn as nn
 import pytorch_lightning as pl
 
 # from config import get_cfg
-from src.models.fiery import Fiery
-from losses import ProbabilisticLoss, SpatialRegressionLoss, SegmentationLoss
-from metrics import IntersectionOverUnion, PanopticMetric
+from src.models.damp import Damp
+from src.losses import ProbabilisticLoss, SpatialRegressionLoss, SegmentationLoss
+from src.metrics import IntersectionOverUnion, PanopticMetric
 from src.utils.geometry import cumulative_warp_features_reverse
 from src.utils.instance import predict_instance_segmentation_and_trajectories
 from src.utils.visualisation import visualise_output

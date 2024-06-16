@@ -1,6 +1,8 @@
 import os
 from PIL import Image
 
+from typing import Dict, List
+
 import numpy as np
 import cv2
 import torch
@@ -11,6 +13,8 @@ from nuscenes.nuscenes import NuScenes
 from nuscenes.utils.splits import create_splits_scenes
 from nuscenes.utils.data_classes import Box
 from omegaconf import DictConfig
+
+from lightning import LightningDataModule
 
 from src.utils.geometry import (
     resize_and_crop_image,
@@ -24,15 +28,53 @@ from src.utils.geometry import (
 from src.utils.instance import convert_instance_mask_to_center_and_offset_label
 
 
-class FuturePredictionDataset(torch.utils.data.Dataset):
+class FuturePredictionDataset(LightningDataModule):
     def __init__(self, data_root, version, name, ignore_index, batch_size):
+        """`LightningDataModule` for the Nuscenes dataset.
+
+        A `LightningDataModule` implements 7 key methods:
+
+        ```python
+            def prepare_data(self):
+            # Things to do on 1 GPU/TPU (not on every GPU/TPU in DDP).
+            # Download data, pre-process, split, save to disk, etc...
+
+            def setup(self, stage):
+            # Things to do on every process in DDP.
+            # Load data, set variables, etc...
+
+            def train_dataloader(self):
+            # return train dataloader
+
+            def val_dataloader(self):
+            # return validation dataloader
+
+            def test_dataloader(self):
+            # return test dataloader
+
+            def predict_dataloader(self):
+            # return predict dataloader
+
+            def teardown(self, stage):
+            # Called on every process in DDP.
+            # Clean up after fit or test.
+        ```
+
+        This allows you to share a full dataset without explaining how to download,
+        split, transform and process the data.
+
+        Read the docs:
+            https://lightning.ai/docs/pytorch/latest/data/datamodule.html
+        """
 
         self.data_root = data_root
         self.version = version
-        self.nusc = NuScenes(version=='v1.0-{}'.format(self.version), dataroot=self.data_root, verbose=False)
         self.name = name
         self.ignore_index = ignore_index
         self.batch_size = batch_size
+        self.nusc = None
+        self.split_scenes : Dict[str, List[str]] = None
+
 
         self.mode = 'train' if self.is_train else 'val'
 
@@ -62,6 +104,15 @@ class FuturePredictionDataset(torch.utils.data.Dataset):
 
         # Spatial extent in bird's-eye view, in meters
         self.spatial_extent = (self.cfg.LIFT.X_BOUND[1], self.cfg.LIFT.Y_BOUND[1])
+
+    def setup(self, stage):
+        self.nusc = NuScenes(version='v1.0-{}'.format(self.version), dataroot=self.data_root, verbose=False)
+        split = {'v1.0-trainval': {True: 'train', False: 'val'},
+                    'v1.0-mini': {True: 'mini_train', False: 'mini_val'},}[
+            self.nusc.version
+        ][self.is_train]
+
+        scenes = create_splits_scenes()[split]
 
     def get_scenes(self):
 
