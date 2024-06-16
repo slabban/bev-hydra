@@ -241,6 +241,7 @@ def cumulative_warp_features(x, flow, mode='nearest', spatial_extent=None):
     if sequence_length == 1:
         return x
 
+    # A transformation matrix [B,4,4]
     flow = pose_vec2mat(flow)
 
     out = [x[:, -1]]

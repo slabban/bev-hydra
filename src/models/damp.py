@@ -11,7 +11,6 @@ from src.models.components.temporal_model import TemporalModel
 # from src.models.components.future_prediction import FuturePrediction
 # from src.models.components.decoder import Decoder
 from src.utils.network import pack_sequence_dim, unpack_sequence_dim, set_bn_momentum
-from
 from src.utils.geometry import (
     cumulative_warp_features,
     calculate_birds_eye_view_parameters,
@@ -101,6 +100,16 @@ class Damp(nn.Module):
         frustum = torch.stack((x_grid, y_grid, depth_grid), -1)
         return nn.Parameter(frustum, requires_grad=False)
 
+    def add_future_egomotions_to_features(self, x, future_egomotion):
+        b, s, c = future_egomotion.shape
+        h, w = x.shape[-2:]
+        future_egomotions_spatial = future_egomotion.view(b, s, c, 1, 1).expand(b, s, c, h, w)
+        # at time 0, no egomotion so feed zero vector
+        future_egomotions_spatial = torch.cat([torch.zeros_like(future_egomotions_spatial[:, :1]),
+                                                future_egomotions_spatial[:, :(self.receptive_field-1)]], dim=1)
+        x = torch.cat([x, future_egomotions_spatial], dim=-3)
+        return x
+
     def forward(
         self,
         image,
@@ -129,6 +138,15 @@ class Damp(nn.Module):
 
         # Lifting features and project to bird's-eye view
         x = self.calculate_birds_eye_view_features(image, intrinsics, extrinsics)
+
+        # Warp past features to the present's reference frame
+        x = cumulative_warp_features(
+            x.clone(), future_egomotion,
+            mode='bilinear', spatial_extent=self.spatial_extent,
+        )
+
+        # Add future egomotions to features
+        x = self.add_future_egomotions_to_features(x, future_egomotion)
 
         # temporal model
         x = self.temporal_model(x, future_egomotion)

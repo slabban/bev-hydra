@@ -73,6 +73,19 @@ class SpatialGRU(nn.Module):
 
 class CausalConv3d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=(2, 3, 3), dilation=(1, 1, 1), bias=False):
+        """
+        Initializes a CausalConv3d object.
+
+        Args:
+            in_channels (int): The number of input channels.
+            out_channels (int): The number of output channels.
+            kernel_size (tuple, optional): The size of the kernel. Defaults to (2, 3, 3).
+            dilation (tuple, optional): The dilation rate. Defaults to (1, 1, 1).
+            bias (bool, optional): Whether to include bias. Defaults to False.
+
+        Raises:
+            AssertionError: If the length of kernel_size is not equal to 3.
+        """
         super().__init__()
         assert len(kernel_size) == 3, 'kernel_size must be a 3-tuple.'
         time_pad = (kernel_size[0] - 1) * dilation[0]
