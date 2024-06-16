@@ -1,14 +1,8 @@
 import torch
 import torch.nn as nn
 
-# from lightning import LightningModule
-
 from src.models.components.encoder import Encoder
 from src.models.components.temporal_model import TemporalModel
-
-# from src.models.components.temporal_model import TemporalModelIdentity, TemporalModel
-# from src.models.components.distributions import DistributionModule
-# from src.models.components.future_prediction import FuturePrediction
 from src.models.components.decoder import Decoder
 from src.utils.network import pack_sequence_dim, unpack_sequence_dim, set_bn_momentum
 from src.utils.geometry import (
@@ -128,6 +122,12 @@ class Damp(nn.Module):
             intrinsics (torch.Tensor): The intrinsics tensor of shape (B, N, 3, 3).
             extrinsics (torch.Tensor): The extrinsics tensor of shape (B, N, 4, 4).
             future_egomotion (torch.Tensor): The future egomotion tensor of shape (B, N, 3).
+            
+            In the context of NuScences, the inputs have the following shapes:
+            The Image shape is 'torch.Size([1, 3, 6, 3, 224, 480])
+            The Intrinsics shape is 'torch.Size([1, 3, 6, 3, 3])
+            The Extrinsics shape is 'torch.Size([1, 3, 6, 4, 4])
+            The Future Egomotions shape is 'torch.Size([1, 3, 6])
 
         Returns:
             dict: A dictionary containing the output tensor of shape (B, N, C, H, W).
@@ -140,22 +140,39 @@ class Damp(nn.Module):
         future_egomotion = future_egomotion[:, : self.receptive_field].contiguous()
 
         # Lifting features and project to bird's-eye view
+        # output tensor shape (B, S, C, H, W), where H and W are the grid sizes
+        # The example output shape is 'torch.Size([1, 3, 64, 200, 200])'
         x = self.calculate_birds_eye_view_features(image, intrinsics, extrinsics)
 
         # Warp past features to the present's reference frame
+        # This does not change the shape 
         x = cumulative_warp_features(
             x.clone(), future_egomotion,
             mode='bilinear', spatial_extent=self.spatial_extent,
         )
 
         # Add future egomotions to features
+        # The example output shape is 'torch.Size([1, 3, 70, 200, 200])'
         x = self.add_future_egomotions_to_features(x, future_egomotion)
 
         # temporal model
-        states = self.temporal_model(x) 
+        # The final shape is torch.Size([1, 1, 64, 200, 200])
+        # Note that the second dimension is the temporal dimension that is determined by
+        # time - receptive_field + 1, since time == receptive_field by default, this final
+        # size is 1
+        states = self.temporal_model(x)
 
         # decoder
+        # this final output is a dictionary containing
+        # Segmentation, Instance Center, Instance Offset, Instance Flow
+        # The second dimension are the present and futures predictions, which is just the present
+        # Segmentation: torch.Size([1, 1, 2, 200, 200])
+        # Instance Center: torch.Size([1, 1, 1, 200, 200])
+        # Instance Offset: torch.Size([1, 1, 2, 200, 200])
+        # Instance Flow: torch.Size([1, 1, 2, 200, 200])
         bev_output = self.decoder(states[:, -1:])
+
+
 
         # TODO: remove complex output, keeping for backward compatibility
         output = {}
