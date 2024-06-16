@@ -9,7 +9,7 @@ from src.models.components.temporal_model import TemporalModel
 # from src.models.components.temporal_model import TemporalModelIdentity, TemporalModel
 # from src.models.components.distributions import DistributionModule
 # from src.models.components.future_prediction import FuturePrediction
-# from src.models.components.decoder import Decoder
+from src.models.components.decoder import Decoder
 from src.utils.network import pack_sequence_dim, unpack_sequence_dim, set_bn_momentum
 from src.utils.geometry import (
     cumulative_warp_features,
@@ -56,9 +56,12 @@ class Damp(nn.Module):
         )
 
         # Decoder
-        # self.decoder = Decoder(cfg=self.cfg.MODEL.DECODER, D=self.depth_channels)
+        self.decoder = Decoder(
+            in_channels=self.future_pred_in_channels,
+            n_classes=len(self.cfg.SEMANTIC_SEG.WEIGHTS),
+            predict_future_flow=self.cfg.INSTANCE_FLOW.ENABLED,
+        )
 
-        # Future prediction
 
     def create_frustum(self):
         """
@@ -149,9 +152,14 @@ class Damp(nn.Module):
         x = self.add_future_egomotions_to_features(x, future_egomotion)
 
         # temporal model
-        x = self.temporal_model(x, future_egomotion)
+        states = self.temporal_model(x) 
 
-        output = x
+        # decoder
+        bev_output = self.decoder(states[:, -1:])
+
+        # TODO: remove complex output, keeping for backward compatibility
+        output = {}
+        output = {**output, **bev_output}
 
         return output
 
