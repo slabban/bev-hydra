@@ -4,4 +4,6 @@ version: 'trainval'
 name: 'nuscenes' # should be redundant
 ignore_index: 255
 batch_size: 1 # Needs to be divisible by the number of devices (e.g., if in a distributed setup)
+num_workers: 5
+pin_memory: True
 

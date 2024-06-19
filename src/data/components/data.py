@@ -10,8 +10,6 @@ from pyquaternion import Quaternion
 from nuscenes.nuscenes import NuScenes
 from nuscenes.utils.splits import create_splits_scenes
 from nuscenes.utils.data_classes import Box
-from omegaconf import DictConfig
-
 from src.utils.geometry import (
     resize_and_crop_image,
     update_intrinsics,
@@ -25,13 +23,13 @@ from src.utils.instance import convert_instance_mask_to_center_and_offset_label
 
 
 class FuturePredictionDataset(torch.utils.data.Dataset):
-    def __init__(self, data_root, version, name, ignore_index, batch_size):
-
-        self.data_root = data_root
+    def __init__(self, is_train, data_root, version, ignore_index, batch_size): 
+        self.dataroot = data_root
         self.version = version
-        self.nusc = NuScenes(version=='v1.0-{}'.format(self.version), dataroot=self.data_root, verbose=False)
-        self.name = name
         self.ignore_index = ignore_index
+
+        self.nusc = NuScenes(version=='v1.0-{}'.format(self.version), dataroot=self.data_root, verbose=False)
+        self.is_train = is_train
         self.batch_size = batch_size
 
         self.mode = 'train' if self.is_train else 'val'
@@ -64,7 +62,6 @@ class FuturePredictionDataset(torch.utils.data.Dataset):
         self.spatial_extent = (self.cfg.LIFT.X_BOUND[1], self.cfg.LIFT.Y_BOUND[1])
 
     def get_scenes(self):
-
 
         # filter by scene split
         split = {'v1.0-trainval': {True: 'train', False: 'val'},
@@ -199,7 +196,7 @@ class FuturePredictionDataset(torch.utils.data.Dataset):
             sensor_to_lidar = torch.from_numpy(np.linalg.inv(lidar_to_sensor)).float()
 
             # Load image
-            image_filename = os.path.join(self.data_root, camera_sample['filename'])
+            image_filename = os.path.join(self.dataroot, camera_sample['filename'])
             img = Image.open(image_filename)
             # Resize and crop
             img = resize_and_crop_image(
@@ -247,6 +244,7 @@ class FuturePredictionDataset(torch.utils.data.Dataset):
             # Filter out all non vehicle instances
             annotation = self.nusc.get('sample_annotation', annotation_token)
 
+
             # NuScenes filter
             if 'vehicle' not in annotation['category_name']:
                 continue
@@ -259,6 +257,7 @@ class FuturePredictionDataset(torch.utils.data.Dataset):
             instance_id = instance_map[annotation['instance_token']]
 
             instance_attribute = int(annotation['visibility_token'])
+
 
             poly_region, z = self._get_poly_region_in_image(annotation, translation, rotation)
             cv2.fillPoly(instance, [poly_region], instance_id)
@@ -383,6 +382,7 @@ class FuturePredictionDataset(torch.utils.data.Dataset):
                 continue
             data[key] = torch.cat(value, dim=0)
 
+
         instance_centerness, instance_offset, instance_flow = convert_instance_mask_to_center_and_offset_label(
             data['instance'], data['future_egomotion'],
             num_instances=len(instance_map), ignore_index=self.cfg.DATASET.IGNORE_INDEX, subtract_egomotion=True,
@@ -392,28 +392,3 @@ class FuturePredictionDataset(torch.utils.data.Dataset):
         data['offset'] = instance_offset
         data['flow'] = instance_flow
         return data
-
-
-def prepare_dataloaders(cfg, return_dataset=False):
-    version = cfg.DATASET.VERSION
-    train_on_training_data = True
-
-
-    traindata = FuturePredictionDataset(nusc, train_on_training_data, cfg)
-    valdata = FuturePredictionDataset(nusc, False, cfg)
-
-    if cfg.DATASET.VERSION == 'mini':
-        traindata.indices = traindata.indices[:10]
-        valdata.indices = valdata.indices[:10]
-
-    nworkers = cfg.N_WORKERS
-    trainloader = torch.utils.data.DataLoader(
-        traindata, batch_size=cfg.BATCHSIZE, shuffle=True, num_workers=nworkers, pin_memory=True, drop_last=True
-    )
-    valloader = torch.utils.data.DataLoader(
-        valdata, batch_size=cfg.BATCHSIZE, shuffle=False, num_workers=nworkers, pin_memory=True, drop_last=False)
-
-    if return_dataset:
-        return trainloader, valloader, traindata, valdata
-    else:
-        return trainloader, valloader
