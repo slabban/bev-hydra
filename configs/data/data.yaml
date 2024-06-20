@@ -1,4 +1,4 @@
-_target_: src.data.data.FuturePredictionDataset
+_target_: src.data.data_module.DampDataModule
 data_root: ${paths.data_dir} 
 version: 'trainval'
 name: 'nuscenes' # should be redundant
@@ -6,4 +6,4 @@ ignore_index: 255
 batch_size: 1 # Needs to be divisible by the number of devices (e.g., if in a distributed setup)
 num_workers: 5
 pin_memory: True
-
+filter_invisible_vehicles: True

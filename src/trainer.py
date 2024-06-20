@@ -27,7 +27,7 @@ class TrainingModule(pl.LightningModule):
         self.spatial_extent = (self.cfg.LIFT.X_BOUND[1], self.cfg.LIFT.Y_BOUND[1])
 
         # Model
-        self.model = Fiery(cfg)
+        self.model = Damp(cfg)
 
         # Losses
         self.losses_fn = nn.ModuleDict()

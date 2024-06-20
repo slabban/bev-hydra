@@ -1,16 +1,27 @@
-_target_: lightning.pytorch.trainer.Trainer
+_target_: src.models.trainer.TrainingModule
 
+# optimizer, trainer
+# future discount, trainer
+# vis interval, trainer
 default_root_dir: ${paths.output_dir}
 
+
+
 min_epochs: 1 # prevents early stopping
-max_epochs: 10
+max_epochs: 5
 
 accelerator: cpu
 devices: 1
 
-# mixed precision for extra speed-up
-# precision: 16
+# 16 bit precision or 32 bit
+precision: 16
 
+# optimizer
+lr: 3e-4
+weight_decay: 1e-7
+grad_norm_clip: 5
+
+visualization_interval: 5000
 # perform a validation loop every N training epochs
 check_val_every_n_epoch: 1
 
