@@ -1,10 +1,9 @@
-
-
-
-semantic_segmentatio:
+semantic_segmentation:
   weights: [1.0, 2.0]
   use_top_k: True
   top_k_ratio: 0.25
+
+receptive_field: 3  # how many frames of temporal context (1 for single timeframe)
 
 # LIFT, data, model, trainer
 lift:
@@ -15,11 +14,11 @@ lift:
   z_bound: [-10.0, 10.0, 20.0] # Height
   d_bound: [2.0, 50.0, 1.0]
 
-  image:
-    final_dim: [224, 480]
-    resize_scale: 0.3
-    top_crop: 46
-    original_height: 900
-    original_width: 1600
-    names: [CAM_FRONT_LEFT, CAM_FRONT, CAM_FRONT_RIGHT, CAM_BACK_LEFT, CAM_BACK, CAM_BACK_RIGHT]
+image:
+  final_dim: [224, 480]
+  resize_scale: 0.3
+  top_crop: 46
+  original_height: 900
+  original_width: 1600
+  names: [CAM_FRONT_LEFT, CAM_FRONT, CAM_FRONT_RIGHT, CAM_BACK_LEFT, CAM_BACK, CAM_BACK_RIGHT]
 

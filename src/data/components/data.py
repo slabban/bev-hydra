@@ -5,6 +5,7 @@ import numpy as np
 import cv2
 import torch
 import torchvision
+from omegaconf import DictConfig
 
 from pyquaternion import Quaternion
 from nuscenes.nuscenes import NuScenes
@@ -23,19 +24,20 @@ from src.utils.instance import convert_instance_mask_to_center_and_offset_label
 
 
 class FuturePredictionDataset(torch.utils.data.Dataset):
-    def __init__(self, is_train, data_root, version, ignore_index, batch_size): 
+    def __init__(self, is_train : bool, data_root : str, version : str, ignore_index : int, batch_size : int, filter_invisible_vehicles : bool, common: DictConfig = None): 
         self.dataroot = data_root
         self.version = version
         self.ignore_index = ignore_index
-
-        self.nusc = NuScenes(version=='v1.0-{}'.format(self.version), dataroot=self.data_root, verbose=False)
         self.is_train = is_train
         self.batch_size = batch_size
-
         self.mode = 'train' if self.is_train else 'val'
+        self.filter_invisible_vehicles = filter_invisible_vehicles
 
-        self.sequence_length = cfg.TIME_RECEPTIVE_FIELD + cfg.N_FUTURE_FRAMES
+        self.common_parameters = common
 
+        self.sequence_length = self.common_parameters.receptive_field 
+
+        self.nusc = NuScenes(version=='v1.0-{}'.format(self.version), dataroot=self.dataroot, verbose=False)
         self.scenes = self.get_scenes()
         self.ixes = self.prepro()
         self.indices = self.get_indices()
@@ -52,14 +54,14 @@ class FuturePredictionDataset(torch.utils.data.Dataset):
 
         # Bird's-eye view parameters
         bev_resolution, bev_start_position, bev_dimension = calculate_birds_eye_view_parameters(
-            cfg.LIFT.X_BOUND, cfg.LIFT.Y_BOUND, cfg.LIFT.Z_BOUND
+            self.common_parameters.lift.x_bound, self.common_parameters.lift.y_bound, self.common_parameters.lift.z_bound
         )
         self.bev_resolution, self.bev_start_position, self.bev_dimension = (
             bev_resolution.numpy(), bev_start_position.numpy(), bev_dimension.numpy()
         )
 
         # Spatial extent in bird's-eye view, in meters
-        self.spatial_extent = (self.cfg.LIFT.X_BOUND[1], self.cfg.LIFT.Y_BOUND[1])
+        self.spatial_extent = (self.common_parameters.lift.x_bound[1], self.common_parameters.lift.x_bound[1])
 
     def get_scenes(self):
 
@@ -111,14 +113,14 @@ class FuturePredictionDataset(torch.utils.data.Dataset):
         return np.asarray(indices)
 
     def get_resizing_and_cropping_parameters(self):
-        original_height, original_width = self.cfg.IMAGE.ORIGINAL_HEIGHT, self.cfg.IMAGE.ORIGINAL_WIDTH
-        final_height, final_width = self.cfg.IMAGE.FINAL_DIM
+        original_height, original_width = self.common_parameters.image.original_height, self.common_parameters.image.original_width
+        final_height, final_width = self.common_parameters.image.final_dim
 
-        resize_scale = self.cfg.IMAGE.RESIZE_SCALE
+        resize_scale = self.common_parameters.image.resize_scale
         resize_dims = (int(original_width * resize_scale), int(original_height * resize_scale))
         resized_width, resized_height = resize_dims
 
-        crop_h = self.cfg.IMAGE.TOP_CROP
+        crop_h = self.common_parameters.image.top_crop
         crop_w = int(max(0, (resized_width - final_width) / 2))
         # Left, top, right, bottom crops.
         crop = (crop_w, crop_h, crop_w + final_width, crop_h + final_height)
@@ -149,7 +151,7 @@ class FuturePredictionDataset(torch.utils.data.Dataset):
         images = []
         intrinsics = []
         extrinsics = []
-        cameras = self.cfg.IMAGE.NAMES
+        cameras = self.common_parameters.image.names
 
         # The extrinsics we want are from the camera sensor to "flat egopose" as defined
         # https://github.com/nutonomy/nuscenes-devkit/blob/9b492f76df22943daf1dc991358d3d606314af27/python-sdk/nuscenes/nuscenes.py#L279
@@ -248,7 +250,7 @@ class FuturePredictionDataset(torch.utils.data.Dataset):
             # NuScenes filter
             if 'vehicle' not in annotation['category_name']:
                 continue
-            if self.cfg.DATASET.FILTER_INVISIBLE_VEHICLES and int(annotation['visibility_token']) == 1:
+            if self.filter_invisible_vehicles and int(annotation['visibility_token']) == 1:
                 continue
 
 
@@ -385,7 +387,7 @@ class FuturePredictionDataset(torch.utils.data.Dataset):
 
         instance_centerness, instance_offset, instance_flow = convert_instance_mask_to_center_and_offset_label(
             data['instance'], data['future_egomotion'],
-            num_instances=len(instance_map), ignore_index=self.cfg.DATASET.IGNORE_INDEX, subtract_egomotion=True,
+            num_instances=len(instance_map), ignore_index=self.ignore_index, subtract_egomotion=True,
             spatial_extent=self.spatial_extent,
         )
         data['centerness'] = instance_centerness

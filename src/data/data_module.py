@@ -6,6 +6,9 @@ from lightning import LightningDataModule
 
 from src.data.components.data import FuturePredictionDataset
 
+from omegaconf import DictConfig
+
+
 
 class DampDataModule(LightningDataModule):
     """`LightningDataModule` for the Furture Prediction dataset.
@@ -47,12 +50,8 @@ class DampDataModule(LightningDataModule):
 
     def __init__(
         self,
-        data_dir: str = "data/",
-        dataset_version: str = "trainval",
-        batch_size: int = 1,
-        ignore_index: int = 255,
-        num_workers: int = 5,
-        pin_memory: bool = True,
+        dataset_parameters: DictConfig = None,
+        common: DictConfig = None,
     ) -> None:
         """
         Initializes a new instance of the class.
@@ -73,14 +72,8 @@ class DampDataModule(LightningDataModule):
 
         super().__init__()
 
-        self.version = dataset_version
-        # 28130 train and 6019 val
-        self.dataroot = data_dir
-        self.batch_size = batch_size
-        self.ignore_index = ignore_index
-
-        self.num_workers = num_workers
-        self.pin_memory = pin_memory
+        self.dataset_parameters = dataset_parameters
+        self.common = common
 
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
@@ -90,8 +83,6 @@ class DampDataModule(LightningDataModule):
         self.data_train: Optional[Dataset] = None
         self.data_val: Optional[Dataset] = None
         self.data_test: Optional[Dataset] = None
-
-        self.batch_size_per_device = batch_size
 
 
     def prepare_data(self) -> None:
@@ -116,16 +107,16 @@ class DampDataModule(LightningDataModule):
         """
 
         self.data_train = FuturePredictionDataset(
-            data_root=self.dataroot, version=self.version,
-            ignore_index=self.ignore_index,
-            batch_size=self.batch_size,
-            is_train=True,
+            data_root=self.dataset_parameters.data_root, version=self.dataset_parameters.version,
+            ignore_index=self.dataset_parameters.ignore_index,
+            batch_size=self.dataset_parameters.batch_size,
+            is_train=True, filter_invisible_vehicles=self.filter_invisible_vehicles
         )
         self.data_val = FuturePredictionDataset(
             data_root=self.dataroot, version=self.version,
             ignore_index=self.ignore_index,
             batch_size=self.batch_size,
-            is_train=False,
+            is_train=False, filter_invisible_vehicles=self.filter_invisible_vehicles
         )
 
 
@@ -136,9 +127,9 @@ class DampDataModule(LightningDataModule):
         """
         return DataLoader(
             dataset=self.data_train,
-            batch_size=self.batch_size_per_device,
-            num_workers=self.num_workers,
-            pin_memory=self.pin_memory,
+            batch_size=self.dataset_parameters.batch_size,
+            num_workers=self.dataset_parameters.num_workers,
+            pin_memory=self.dataset_parameters.pin_memory,
             shuffle=True, drop_last= True
         )
 
@@ -149,9 +140,10 @@ class DampDataModule(LightningDataModule):
         """
         return DataLoader(
             dataset=self.data_val,
-            batch_size=self.batch_size_per_device,
-            num_workers=self.num_workers,
-            pin_memory=self.pin_memory,
+            dataset=self.data_train,
+            batch_size=self.dataset_parameters.batch_size,
+            num_workers=self.dataset_parameters.num_workers,
+            pin_memory=self.dataset_parameters.pin_memory,
             shuffle=False, drop_last= False
         )
 
