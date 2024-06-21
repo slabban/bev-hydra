@@ -102,27 +102,30 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         L.seed_everything(cfg.seed, workers=True)
 
     log.info(f"Instantiating datamodule <{cfg.data._target_}>")
-    datamodule: LightningDataModule = hydra.utils.instantiate(cfg.data)
+    datamodule: LightningDataModule = hydra.utils.instantiate(cfg.data, cfg.common)
 
-    log.info(f"Instantiating model <{cfg.model._target_}>")
-    model: LightningModule = hydra.utils.instantiate(cfg.model)
+    # TODO
+    # log.info(f"Instantiating model <{cfg.model._target_}>")
+    # model: LightningModule = hydra.utils.instantiate(cfg.model)
 
-    log.info("Instantiating callbacks...")
-    callbacks: List[Callback] = instantiate_callbacks(cfg.get("callbacks"))
+    # TODO
+    # log.info("Instantiating callbacks...")
+    # callbacks: List[Callback] = instantiate_callbacks(cfg.get("callbacks"))
 
     log.info("Instantiating loggers...")
     logger: List[Logger] = instantiate_loggers(cfg.get("logger"))
 
-    log.info(f"Instantiating trainer <{cfg.trainer._target_}>")
-    trainer: Trainer = hydra.utils.instantiate(cfg.trainer, callbacks=callbacks, logger=logger)
+    # TODO
+    # log.info(f"Instantiating trainer <{cfg.trainer._target_}>")
+    # trainer: Trainer = hydra.utils.instantiate(cfg.trainer, logger=logger)
 
     object_dict = {
         "cfg": cfg,
         "datamodule": datamodule,
-        "model": model,
-        "callbacks": callbacks,
+        # "model": model,
+        # "callbacks": callbacks,
         "logger": logger,
-        "trainer": trainer,
+        # "trainer": trainer,
     }
 
     if logger:
