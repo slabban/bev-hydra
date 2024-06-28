@@ -1,19 +1,20 @@
 import torch.nn as nn
+from omegaconf import DictConfig
 from efficientnet_pytorch import EfficientNet
 
 from src.models.layers.convolutions import UpsamplingConcat
 
 
 class Encoder(nn.Module):
-    def __init__(self, cfg, D):
+    def __init__(self, encoder_cfg : DictConfig, D):
         super().__init__()
         self.D = D
-        self.C = cfg.OUT_CHANNELS
-        self.use_depth_distribution = cfg.USE_DEPTH_DISTRIBUTION
-        self.downsample = cfg.DOWNSAMPLE
-        self.version = cfg.NAME.split('-')[1]
+        self.C = encoder_cfg.out_channels
+        self.use_depth_distribution = encoder_cfg.use_depth_distribution
+        self.downsample = encoder_cfg.downsample
+        self.version = encoder_cfg.name.split('-')[1]
 
-        self.backbone = EfficientNet.from_pretrained(cfg.NAME)
+        self.backbone = EfficientNet.from_pretrained(encoder_cfg.NAME)
         self.delete_unused_layers()
 
         if self.downsample == 16:

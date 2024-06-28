@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from omegaconf import DictConfig
 
 from src.models.components.encoder import Encoder
 from src.models.components.temporal_model import TemporalModel
@@ -12,52 +13,53 @@ from src.utils.geometry import (
 )
 
 
-
-
 class Damp(nn.Module):
-    def __init__(self, cfg):
+    def __init__(self, model_cfg : DictConfig, common_cfg : DictConfig):
         super().__init__()
-        self.cfg = cfg
+
+        self.model_cfg = model_cfg
+        self.common_cfg = common_cfg
+
 
         bev_resolution, bev_start_position, bev_dimension = (
             calculate_birds_eye_view_parameters(
-                self.cfg.LIFT.X_BOUND, self.cfg.LIFT.Y_BOUND, self.cfg.LIFT.Z_BOUND
+                self.common_cfg.lift.x_bound, self.common_cfg.lift.y_bound, self.common_cfg.lift.z_bound
             )
         )
         self.bev_resolution = nn.Parameter(bev_resolution, requires_grad=False)
         self.bev_start_position = nn.Parameter(bev_start_position, requires_grad=False)
         self.bev_dimension = nn.Parameter(bev_dimension, requires_grad=False)
+        self.bev_size = (self.bev_dimension[0].item(), self.bev_dimension[1].item())
 
-        self.encoder_downsample = self.cfg.MODEL.ENCODER.DOWNSAMPLE
-        self.encoder_out_channels = self.cfg.MODEL.ENCODER.OUT_CHANNELS
+        self.encoder_downsample = self.model_cfg.encoder.downsample
+        self.encoder_out_channels = self.model_cfg.encoder.out_channels
+        self.receptive_field = self.common_cfg.receptive_field
 
         self.frustum = self.create_frustum()
         self.depth_channels, _, _, _ = self.frustum.shape
 
-        # Encoder
-        self.encoder = Encoder(cfg=self.cfg.MODEL.ENCODER, D=self.depth_channels)
+        # Spatial extent in bird's-eye view, in meters
+        self.spatial_extent = (self.common_cfg.lift.x_bound[1], self.common_cfg.lift.y_bound[1])
 
-        set_bn_momentum(self, self.cfg.MODEL.BN_MOMENTUM)
+        self.encoder = Encoder(encoder_cfg=self.model_cfg.encoder, D=self.depth_channels)
+
 
         # Temporal model
         temporal_in_channels = self.encoder_out_channels + 6
-        self.temporal_model = TemporalModel(
-            temporal_in_channels,
-            self.receptive_field,
-            input_shape=self.bev_size,
-            start_out_channels=self.cfg.MODEL.TEMPORAL_MODEL.START_OUT_CHANNELS,
-            extra_in_channels=self.cfg.MODEL.TEMPORAL_MODEL.EXTRA_IN_CHANNELS,
-            n_spatial_layers_between_temporal_layers=self.cfg.MODEL.TEMPORAL_MODEL.INBETWEEN_LAYERS,
-            use_pyramid_pooling=self.cfg.MODEL.TEMPORAL_MODEL.PYRAMID_POOLING,
+        self.temporal_model = TemporalModel(self.model_cfg.temporal_model,
+            in_channels=temporal_in_channels,
+            receptive_field=self.receptive_field,
+            input_shape=self.bev_size
         )
 
         # Decoder
         self.decoder = Decoder(
             in_channels=self.future_pred_in_channels,
-            n_classes=len(self.cfg.SEMANTIC_SEG.WEIGHTS),
-            predict_future_flow=self.cfg.INSTANCE_FLOW.ENABLED,
+            n_classes=len(self.common_cfg.semantic_segmentation.weights),
+            predict_future_flow=self.model_cfg.instance_flow_enabled,
         )
 
+        set_bn_momentum(self, self.model_cfg.bn_momentum)
 
     def create_frustum(self):
         """
@@ -73,14 +75,14 @@ class Damp(nn.Module):
         Returns:
             torch.nn.Parameter: The frustum grid as a parameter with requires_grad set to False.
         """
-        h, w = self.cfg.IMAGE.FINAL_DIM
+        h, w = self.common_cfg.image.final_dim
         downsampled_h, downsampled_w = (
             h // self.encoder_downsample,
             w // self.encoder_downsample,
         )
 
         # Depth grid
-        depth_grid = torch.arange(*self.cfg.LIFT.D_BOUND, dtype=torch.float)
+        depth_grid = torch.arange(*self.common_cfg.lift.d_bound, dtype=torch.float)
         depth_grid = depth_grid.view(-1, 1, 1).expand(-1, downsampled_h, downsampled_w)
         n_depth_slices = depth_grid.shape[0]
 

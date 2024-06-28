@@ -4,6 +4,7 @@ _target_: src.models.damp.Damp
 # compile model for faster training with pytorch 2.0
 compile: false
 bn_momentum: 0.1
+instance_flow_enabled: false
 
 encoder:
   _target_: src.models.components.encoder.Encoder
