@@ -1,12 +1,12 @@
 import torch.nn as nn
+from omegaconf import DictConfig
 
 from src.models.layers.temporal import Bottleneck3D, TemporalBlock
 
 
 class TemporalModel(nn.Module):
     def __init__(
-            self, in_channels, receptive_field, input_shape, start_out_channels=64, extra_in_channels=0,
-            n_spatial_layers_between_temporal_layers=0, use_pyramid_pooling=True):
+            self, cfg_temporal_model : DictConfig, in_channels, receptive_field, input_shape):
         """
         Initializes a TemporalModel object.
 
@@ -22,6 +22,9 @@ class TemporalModel(nn.Module):
         Description:
             This function initializes a TemporalModel object. It creates a sequence of temporal and spatial layers based on the provided parameters. The number of temporal layers is determined by the receptive field of the model. Each temporal layer is followed by a sequence of spatial layers. The number of spatial layers is determined by the `n_spatial_layers_between_temporal_layers` parameter. The output channels of each temporal layer are incremented by the `extra_in_channels` parameter. The final number of output channels is stored in the `out_channels` attribute. The sequence of temporal and spatial layers is stored in the `model` attribute.
         """
+
+        super().__init__()
+        self.cfg_temporal_model = cfg_temporal_model
         self.receptive_field = receptive_field
         n_temporal_layers = receptive_field - 1
 
@@ -29,7 +32,7 @@ class TemporalModel(nn.Module):
         modules = []
 
         block_in_channels = in_channels
-        block_out_channels = start_out_channels
+        block_out_channels = self.cfg_temporal_model.start_out_channels
 
         for _ in range(n_temporal_layers):
             if use_pyramid_pooling:
@@ -46,13 +49,13 @@ class TemporalModel(nn.Module):
             )
             spatial = [
                 Bottleneck3D(block_out_channels, block_out_channels, kernel_size=(1, 3, 3))
-                for _ in range(n_spatial_layers_between_temporal_layers)
+                for _ in range(self.cfg_temporal_model.inbetween_layers)
             ]
             temporal_spatial_layers = nn.Sequential(temporal, *spatial)
             modules.extend(temporal_spatial_layers)
 
             block_in_channels = block_out_channels
-            block_out_channels += extra_in_channels
+            block_out_channels += self.cfg_temporal_model.extra_in_channels
 
         self.out_channels = block_in_channels
 

@@ -37,7 +37,7 @@ class FuturePredictionDataset(torch.utils.data.Dataset):
 
         self.sequence_length = self.common_parameters.receptive_field 
 
-        self.nusc = NuScenes(version=='v1.0-{}'.format(self.version), dataroot=self.data_root, verbose=False)
+        self.nusc = NuScenes(version=='v1.0-{}'.format(self.version), dataroot=self.dataroot, verbose=False)
         self.scenes = self.get_scenes()
         self.ixes = self.prepro()
         self.indices = self.get_indices()

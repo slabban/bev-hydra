@@ -104,9 +104,8 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     log.info(f"Instantiating datamodule <{cfg.data._target_}>")
     datamodule: LightningDataModule = hydra.utils.instantiate(cfg.data, cfg.common)
 
-    # TODO
-    # log.info(f"Instantiating model <{cfg.model._target_}>")
-    # model: LightningModule = hydra.utils.instantiate(cfg.model)
+    log.info(f"Instantiating model <{cfg.model._target_}>")
+    model: LightningModule = hydra.utils.instantiate(cfg.model, cfg.common)
 
     # TODO
     # log.info("Instantiating callbacks...")
@@ -122,7 +121,11 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     object_dict = {
         "cfg": cfg,
         "datamodule": datamodule,
+<<<<<<< HEAD
         # "model": model,
+=======
+        "model": model,
+>>>>>>> 9880e7a7a8d34b7694a32b9c9f03a75d09ee8e68
         # "callbacks": callbacks,
         "logger": logger,
         # "trainer": trainer,
