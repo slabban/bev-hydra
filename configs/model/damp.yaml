@@ -1,32 +1,31 @@
 _target_: src.trainer.trainer.BevLightingModule
 
-encoder:
-  _target_: src.models.components.encoder.Encoder
-  _partial_: True
-  out_channels: 64
-  use_depth_distribution: True
-  downsample: 8
-  name: efficientnet-b0
+model:
+  # _target_: src.models.damp.Damp
+  encoder:
+    _partial_: True
+    out_channels: 64
+    use_depth_distribution: True
+    downsample: 8
+    name: efficientnet-b0
 
-image:
-  final_dim: [224, 480]
-  resize_scale: 0.3
-  top_crop: 46
-  original_height: 900
-  original_width: 1600
-  names: [CAM_FRONT_LEFT, CAM_FRONT, CAM_FRONT_RIGHT, CAM_BACK_LEFT, CAM_BACK, CAM_BACK_RIGHT]
+  image:
+    final_dim: [224, 480]
+    resize_scale: 0.3
+    top_crop: 46
+    original_height: 900
+    original_width: 1600
+    names: [CAM_FRONT_LEFT, CAM_FRONT, CAM_FRONT_RIGHT, CAM_BACK_LEFT, CAM_BACK, CAM_BACK_RIGHT]
 
-temporal_model:
-  name: 'temporal_block'  # type of temporal model
-  start_out_channels: 64
-  extra_in_channels: 0
-  inbetween_layers: 0
-  pyramid_pooling: True
-  input_egopose: True
+  temporal_model:
+    name: 'temporal_block'  # type of temporal model
+    start_out_channels: 64
+    extra_in_channels: 0
+    inbetween_layers: 0
+    pyramid_pooling: True
+    input_egopose: True
 
-# compile model for faster training with pytorch 2.0
-compile: False
-bn_momentum: 0.1
-instance_flow_enabled: False
+    bn_momentum: 0.1
+    instance_flow_enabled: False
 
 

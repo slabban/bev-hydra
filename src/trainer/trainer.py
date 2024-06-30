@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
+# import hydra
 from omegaconf import DictConfig
 
 from src.models.damp import Damp
@@ -11,15 +12,14 @@ from src.utils.instance import predict_instance_segmentation_and_trajectories
 from src.utils.visualisation import visualise_output
 
 class BevLightingModule(pl.LightningModule):
-    def __init__(self, model_cfg : DictConfig, common_cfg : DictConfig):
+    def __init__(self, model, common_cfg : DictConfig):
         super().__init__()
         
-        self.model_cfg = model_cfg
+        self.model = model
         self.common_cfg = common_cfg
         self.n_classes = len(self.common_cfg.semantic_segmentation.weights)
 
-        # Model
-        self.model = Damp(model_cfg=self.model_cfg.model, common_cfg=self.common_cfg)
+        self.model = Damp(self.model, self.common_cfg)
 
         # Bird's-eye view extent in meters
         assert self.common_cfg.lift.x_bound[1] > 0 and self.common_cfg.lift.y_bound[1] > 0

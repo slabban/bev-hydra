@@ -4,7 +4,7 @@ import time
 import socket
 import torch
 from torch import nn
-from src.trainer import TrainingModule
+from src.trainer.trainer import BevLightingModule
 import hydra
 import lightning as L
 import rootutils
@@ -63,10 +63,10 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         L.seed_everything(cfg.seed, workers=True)
 
     log.info(f"Instantiating datamodule <{cfg.data._target_}>")
-    datamodule: LightningDataModule = hydra.utils.instantiate(cfg.data, cfg.common)
+    datamodule: LightningDataModule = hydra.utils.instantiate(cfg.data, common=cfg.common)
 
     log.info(f"Instantiating training module <{cfg.model._target_}>")
-    model: LightningModule = hydra.utils.instantiate(cfg.model, cfg.common)
+    model: LightningModule = hydra.utils.instantiate(cfg.model, common_cfg=cfg.common)
 
     # TODO
     # log.info("Instantiating callbacks...")
@@ -76,7 +76,7 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     logger: List[Logger] = instantiate_loggers(cfg.get("logger"))
 
     log.info(f"Instantiating trainer <{cfg.trainer._target_}>")
-    trainer: Trainer = hydra.utils.instantiate(cfg.trainer, logger=logger)
+    trainer: Trainer = hydra.utils.instantiate(config=cfg.trainer, logger=logger)
 
     object_dict = {
         "cfg": cfg,

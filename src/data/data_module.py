@@ -50,8 +50,9 @@ class DampDataModule(LightningDataModule):
 
     def __init__(
         self,
-        dataset_parameters: DictConfig = None,
-        common: DictConfig = None,
+        data_root, version,batch_size, num_workers, pin_memory,
+        filter_invisible_vehicles,
+        common: DictConfig,
     ) -> None:
         """
         Initializes a new instance of the class.
@@ -72,7 +73,12 @@ class DampDataModule(LightningDataModule):
 
         super().__init__()
 
-        self.dataset_parameters = dataset_parameters
+        self.data_root = data_root
+        self.version = version
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+        self.pin_memory = pin_memory
+        self.filter_invisible_vehicles = filter_invisible_vehicles
         self.common = common
 
         # this line allows to access init params with 'self.hparams' attribute
@@ -107,16 +113,11 @@ class DampDataModule(LightningDataModule):
         """
 
         self.data_train = FuturePredictionDataset(
-            data_root=self.dataset_parameters.data_root, version=self.dataset_parameters.version,
-            ignore_index=self.common.ignore_index,
-            batch_size=self.dataset_parameters.batch_size,
-            is_train=True, filter_invisible_vehicles=self.filter_invisible_vehicles
+            data_root= self.data_root, version=self.version, batch_size=self.batch_size, is_train=True, filter_invisible_vehicles=self.filter_invisible_vehicles
         )
-        self.data_val = FuturePredictionDataset(
-            data_root=self.dataroot, version=self.version,
-            ignore_index=self.common.ignore_index,
-            batch_size=self.batch_size,
-            is_train=False, filter_invisible_vehicles=self.filter_invisible_vehicles
+
+        self.data_train = FuturePredictionDataset(
+            data_root= self.data_root, version=self.version, batch_size=self.batch_size, is_train=False, filter_invisible_vehicles=self.filter_invisible_vehicles
         )
 
 
@@ -127,9 +128,9 @@ class DampDataModule(LightningDataModule):
         """
         return DataLoader(
             dataset=self.data_train,
-            batch_size=self.dataset_parameters.batch_size,
-            num_workers=self.dataset_parameters.num_workers,
-            pin_memory=self.dataset_parameters.pin_memory,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            pin_memory=self.pin_memory,
             shuffle=True, drop_last= True
         )
 
@@ -140,10 +141,9 @@ class DampDataModule(LightningDataModule):
         """
         return DataLoader(
             dataset=self.data_val,
-            dataset=self.data_train,
-            batch_size=self.dataset_parameters.batch_size,
-            num_workers=self.dataset_parameters.num_workers,
-            pin_memory=self.dataset_parameters.pin_memory,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            pin_memory=self.pin_memory,
             shuffle=False, drop_last= False
         )
 

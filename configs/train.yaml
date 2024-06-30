@@ -1,4 +1,4 @@
-@package _global_
+# @package _global_
 
 
 # specify here default configuration
@@ -11,7 +11,7 @@ defaults:
   - callbacks: default
   - logger: null # set logger here or use command line (e.g. `python train.py logger=tensorboard`)
   - trainer: gpu # set trainer here or use command line (e.g. `python train.py trainer=gpu`)
-  - paths: default
+  - paths: default 
   - extras: default
   - hydra: default
 
