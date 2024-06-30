@@ -67,7 +67,7 @@ class DampDataModule(LightningDataModule):
         Returns:
             None
 
-        This function initializes the class with the provided parameters. It sets the `version`, `dataroot`, `batch_size`, `ignore_index`, `num_workers`, and `pin_memory` attributes. It also saves the initialization parameters using the `save_hyperparameters` method. The `data_train`, `data_val`, and `data_test` attributes are initialized as optional `Dataset` objects. The `batch_size_per_device` attribute is set to the provided `batch_size`.
+        This function initializes the class with the provided parameters. It sets the `version`, `dataroot`, `batch_size`, ``, `num_workers`, and `pin_memory` attributes. It also saves the initialization parameters using the `save_hyperparameters` method. The `data_train`, `data_val`, and `data_test` attributes are initialized as optional `Dataset` objects. The `batch_size_per_device` attribute is set to the provided `batch_size`.
         """
 
         super().__init__()
@@ -108,13 +108,13 @@ class DampDataModule(LightningDataModule):
 
         self.data_train = FuturePredictionDataset(
             data_root=self.dataset_parameters.data_root, version=self.dataset_parameters.version,
-            ignore_index=self.dataset_parameters.ignore_index,
+            ignore_index=self.common.ignore_index,
             batch_size=self.dataset_parameters.batch_size,
             is_train=True, filter_invisible_vehicles=self.filter_invisible_vehicles
         )
         self.data_val = FuturePredictionDataset(
             data_root=self.dataroot, version=self.version,
-            ignore_index=self.ignore_index,
+            ignore_index=self.common.ignore_index,
             batch_size=self.batch_size,
             is_train=False, filter_invisible_vehicles=self.filter_invisible_vehicles
         )

@@ -1,16 +1,10 @@
-
-_target_: src.models.damp.Damp
-
-# compile model for faster training with pytorch 2.0
-compile: false
-bn_momentum: 0.1
-instance_flow_enabled: false
+_target_: src.trainer.trainer.BevLightingModule
 
 encoder:
   _target_: src.models.components.encoder.Encoder
-  _partial_: true
+  _partial_: True
   out_channels: 64
-  use_depth_distribution: true
+  use_depth_distribution: True
   downsample: 8
   name: efficientnet-b0
 
@@ -27,6 +21,12 @@ temporal_model:
   start_out_channels: 64
   extra_in_channels: 0
   inbetween_layers: 0
-  pyramid_pooling: true
-  input_egopose: true
+  pyramid_pooling: True
+  input_egopose: True
+
+# compile model for faster training with pytorch 2.0
+compile: False
+bn_momentum: 0.1
+instance_flow_enabled: False
+
 

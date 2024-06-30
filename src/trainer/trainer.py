@@ -1,37 +1,38 @@
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
+from omegaconf import DictConfig
 
-# from config import get_cfg
 from src.models.damp import Damp
-from src.losses import ProbabilisticLoss, SpatialRegressionLoss, SegmentationLoss
-from src.metrics import IntersectionOverUnion, PanopticMetric
+from src.trainer.components.losses import SpatialRegressionLoss, SegmentationLoss
+from src.trainer.metrics import IntersectionOverUnion, PanopticMetric
 from src.utils.geometry import cumulative_warp_features_reverse
 from src.utils.instance import predict_instance_segmentation_and_trajectories
 from src.utils.visualisation import visualise_output
 
-
-class TrainingModule(pl.LightningModule):
-    def __init__(self, hparams):
+class BevLightingModule(pl.LightningModule):
+    def __init__(self, model_cfg : DictConfig, common_cfg : DictConfig):
         super().__init__()
         
-        self.cfg = cfg
-        self.n_classes = len(self.cfg.SEMANTIC_SEG.WEIGHTS)
-
-        # Bird's-eye view extent in meters
-        assert self.cfg.LIFT.X_BOUND[1] > 0 and self.cfg.LIFT.Y_BOUND[1] > 0
-        self.spatial_extent = (self.cfg.LIFT.X_BOUND[1], self.cfg.LIFT.Y_BOUND[1])
+        self.model_cfg = model_cfg
+        self.common_cfg = common_cfg
+        self.n_classes = len(self.common_cfg.semantic_segmentation.weights)
 
         # Model
-        self.model = Damp(cfg)
+        self.model = Damp(model_cfg=self.model_cfg.model, common_cfg=self.common_cfg)
 
+        # Bird's-eye view extent in meters
+        assert self.common_cfg.lift.x_bound[1] > 0 and self.common_cfg.lift.y_bound[1] > 0
+        self.spatial_extent = (self.common_cfg.lift.x_bound[1], self.common_cfg.lift.y_bound[1])
+
+        # integrate this into hydra such that the modules are instantiated through the configs
         # Losses
         self.losses_fn = nn.ModuleDict()
         self.losses_fn['segmentation'] = SegmentationLoss(
-            class_weights=torch.Tensor(self.cfg.SEMANTIC_SEG.WEIGHTS),
-            use_top_k=self.cfg.SEMANTIC_SEG.USE_TOP_K,
-            top_k_ratio=self.cfg.SEMANTIC_SEG.TOP_K_RATIO,
-            future_discount=self.cfg.FUTURE_DISCOUNT,
+            class_weights=torch.Tensor(self.common_cfg.semantic_segmentation.weights),
+            use_top_k=self.common_cfg.semantic_segmentation.use_top_k,
+            top_k_ratio=self.common_cfg.semantic_segmentation.top_k_ratio,
+            future_discount=self.common_cfg.future_discount,
         )
 
         # Uncertainty weighting
@@ -40,10 +41,10 @@ class TrainingModule(pl.LightningModule):
         self.metric_iou_val = IntersectionOverUnion(self.n_classes)
 
         self.losses_fn['instance_center'] = SpatialRegressionLoss(
-            norm=2, future_discount=self.cfg.FUTURE_DISCOUNT
+            norm=2, future_discount=self.common_cfg.future_discount
         )
         self.losses_fn['instance_offset'] = SpatialRegressionLoss(
-            norm=1, future_discount=self.cfg.FUTURE_DISCOUNT, ignore_index=self.cfg.DATASET.IGNORE_INDEX
+            norm=1, future_discount=self.common_cfg.future_discount, ignore_index=self.common_cfg.ignore_index
         )
 
         # Uncertainty weighting
@@ -51,16 +52,6 @@ class TrainingModule(pl.LightningModule):
         self.model.offset_weight = nn.Parameter(torch.tensor(0.0), requires_grad=True)
 
         self.metric_panoptic_val = PanopticMetric(n_classes=self.n_classes)
-
-        if self.cfg.INSTANCE_FLOW.ENABLED:
-            self.losses_fn['instance_flow'] = SpatialRegressionLoss(
-                norm=1, future_discount=self.cfg.FUTURE_DISCOUNT, ignore_index=self.cfg.DATASET.IGNORE_INDEX
-            )
-            # Uncertainty weighting
-            self.model.flow_weight = nn.Parameter(torch.tensor(0.0), requires_grad=True)
-
-        if self.cfg.PROBABILISTIC.ENABLED:
-            self.losses_fn['probabilistic'] = ProbabilisticLoss()
 
         self.training_step_count = 0
 
@@ -71,11 +62,11 @@ class TrainingModule(pl.LightningModule):
         future_egomotion = batch['future_egomotion']
 
         # Warp labels
-        labels, future_distribution_inputs = self.prepare_future_labels(batch)
+        labels, _ = self.prepare_future_labels(batch)
 
         # Forward pass
         output = self.model(
-            image, intrinsics, extrinsics, future_egomotion, future_distribution_inputs
+            image, intrinsics, extrinsics, future_egomotion
         )
 
         #####
@@ -254,3 +245,9 @@ class TrainingModule(pl.LightningModule):
         )
 
         return optimizer
+    
+    def forward(self,image,
+        intrinsics,
+        extrinsics,
+        future_egomotion,):
+        return self.model(image, intrinsics, extrinsics, future_egomotion)

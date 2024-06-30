@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
-from fiery.utils.geometry import mat2pose_vec, pose_vec2mat, warp_features
+from src.utils.geometry import mat2pose_vec, pose_vec2mat, warp_features
 
 
 # set ignore index to 0 for vis

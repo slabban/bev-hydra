@@ -24,10 +24,9 @@ from src.utils.instance import convert_instance_mask_to_center_and_offset_label
 
 
 class FuturePredictionDataset(torch.utils.data.Dataset):
-    def __init__(self, is_train : bool, data_root : str, version : str, ignore_index : int, batch_size : int, filter_invisible_vehicles : bool, common: DictConfig = None): 
+    def __init__(self, is_train : bool, data_root : str, version : str, batch_size : int, filter_invisible_vehicles : bool, common: DictConfig = None): 
         self.dataroot = data_root
         self.version = version
-        self.ignore_index = ignore_index
         self.is_train = is_train
         self.batch_size = batch_size
         self.mode = 'train' if self.is_train else 'val'
@@ -387,7 +386,7 @@ class FuturePredictionDataset(torch.utils.data.Dataset):
 
         instance_centerness, instance_offset, instance_flow = convert_instance_mask_to_center_and_offset_label(
             data['instance'], data['future_egomotion'],
-            num_instances=len(instance_map), ignore_index=self.ignore_index, subtract_egomotion=True,
+            num_instances=len(instance_map), ignore_index=self.common_parameters.ignore_index, subtract_egomotion=True,
             spatial_extent=self.spatial_extent,
         )
         data['centerness'] = instance_centerness
