@@ -1,6 +1,6 @@
 # environment.yml
 
-name: pl-hydra
+name: bev-hydra
 channels:
   - defaults
 dependencies:

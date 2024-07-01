@@ -1,5 +1,5 @@
 _target_: src.data.data_module.DampDataModule
-data_root: ${paths.data_dir} 
+data_root: ${paths.data_dir}
 version: 'trainval'
 batch_size: 1 # Needs to be divisible by the number of devices (e.g., if in a distributed setup)
 num_workers: 5

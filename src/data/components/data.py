@@ -25,7 +25,7 @@ from src.utils.instance import convert_instance_mask_to_center_and_offset_label
 
 class FuturePredictionDataset(torch.utils.data.Dataset):
     def __init__(self, is_train : bool, data_root : str, version : str, batch_size : int, filter_invisible_vehicles : bool, common: DictConfig = None): 
-        self.dataroot = data_root
+        self.dataroot = os.path.join(data_root, version)
         self.version = version
         self.is_train = is_train
         self.batch_size = batch_size
@@ -35,8 +35,8 @@ class FuturePredictionDataset(torch.utils.data.Dataset):
         self.common_parameters = common
 
         self.sequence_length = self.common_parameters.receptive_field 
-
-        self.nusc = NuScenes(version=='v1.0-{}'.format(self.version), dataroot=self.dataroot, verbose=False)
+        
+        self.nusc = NuScenes(version='v1.0-{}'.format(self.version), dataroot=self.dataroot, verbose=False)
         self.scenes = self.get_scenes()
         self.ixes = self.prepro()
         self.indices = self.get_indices()

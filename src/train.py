@@ -1,14 +1,8 @@
 # Original Implementation
-import os
-import time
-import socket
-import torch
-from torch import nn
-from src.trainer.trainer import BevLightingModule
 import hydra
 import lightning as L
 import rootutils
-from lightning import Callback, LightningDataModule, LightningModule, Trainer
+from lightning import LightningDataModule, LightningModule, Trainer
 from lightning.pytorch.loggers import Logger
 from omegaconf import DictConfig
 from typing import Any, Dict, List, Optional, Tuple
@@ -36,7 +30,7 @@ from src.utils import (
     RankedLogger,
     extras,
     get_metric_value,
-    instantiate_callbacks,
+    # instantiate_callbacks,
     instantiate_loggers,
     log_hyperparameters,
     task_wrapper,
