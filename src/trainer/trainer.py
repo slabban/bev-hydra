@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-import pytorch_lightning as pl
+from lightning import LightningModule
 # import hydra
 from omegaconf import DictConfig
 
@@ -11,10 +11,12 @@ from src.utils.geometry import cumulative_warp_features_reverse
 from src.utils.instance import predict_instance_segmentation_and_trajectories
 from src.utils.visualisation import visualise_output
 
-class BevLightingModule(pl.LightningModule):
-    def __init__(self, model, common_cfg : DictConfig):
+class BevLightingModule(LightningModule):
+    def __init__(self, lr, weight_decay, model, common_cfg : DictConfig):
         super().__init__()
         
+        self.lr = lr
+        self.weight_decay = weight_decay
         self.model = model
         self.common_cfg = common_cfg
         self.n_classes = len(self.common_cfg.semantic_segmentation.weights)
@@ -232,16 +234,16 @@ class BevLightingModule(pl.LightningModule):
             self.logger.experiment.add_scalar('flow_weight', 1 / (2 * torch.exp(self.model.flow_weight)),
                                               global_step=self.training_step_count)
 
-    def training_epoch_end(self, step_outputs):
+    def on_train_epoch_end(self, step_outputs):
         self.shared_epoch_end(step_outputs, True)
 
-    def validation_epoch_end(self, step_outputs):
+    def on_validation_epoch_end(self, step_outputs):
         self.shared_epoch_end(step_outputs, False)
 
     def configure_optimizers(self):
         params = self.model.parameters()
         optimizer = torch.optim.Adam(
-            params, lr=self.cfg.OPTIMIZER.LR, weight_decay=self.cfg.OPTIMIZER.WEIGHT_DECAY
+            params, lr=self.lr, weight_decay=self.weight_decay
         )
 
         return optimizer

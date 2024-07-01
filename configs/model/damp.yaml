@@ -1,10 +1,14 @@
 _target_: src.trainer.trainer.BevLightingModule
 
+# optimizer
+lr: 3e-4
+weight_decay: 1e-7
+
 model:
   # _target_: src.models.damp.Damp
   bn_momentum: 0.1
   instance_flow_enabled: False
-  
+
   encoder:
     out_channels: 64
     use_depth_distribution: True

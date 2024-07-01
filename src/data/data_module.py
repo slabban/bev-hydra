@@ -113,11 +113,11 @@ class DampDataModule(LightningDataModule):
         """
 
         self.data_train = FuturePredictionDataset(
-            data_root= self.data_root, version=self.version, batch_size=self.batch_size, is_train=True, filter_invisible_vehicles=self.filter_invisible_vehicles
+            data_root= self.data_root, version=self.version, batch_size=self.batch_size, is_train=True, filter_invisible_vehicles=self.filter_invisible_vehicles, common=self.common
         )
 
         self.data_train = FuturePredictionDataset(
-            data_root= self.data_root, version=self.version, batch_size=self.batch_size, is_train=False, filter_invisible_vehicles=self.filter_invisible_vehicles
+            data_root= self.data_root, version=self.version, batch_size=self.batch_size, is_train=False, filter_invisible_vehicles=self.filter_invisible_vehicles, common=self.common
         )
 
 
