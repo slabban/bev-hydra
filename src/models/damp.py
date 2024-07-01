@@ -52,11 +52,13 @@ class Damp(nn.Module):
             input_shape=self.bev_size
         )
 
+        self.future_pred_in_channels = self.temporal_model.out_channels
+
         # Decoder
         self.decoder = Decoder(
             in_channels=self.future_pred_in_channels,
             n_classes=len(self.common_cfg.semantic_segmentation.weights),
-            predict_future_flow=self.model_cfg.instance_flow_enabled,
+            predict_future_flow=False,
         )
 
         set_bn_momentum(self, self.model_cfg.bn_momentum)

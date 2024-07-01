@@ -14,7 +14,7 @@ class Encoder(nn.Module):
         self.downsample = encoder_cfg.downsample
         self.version = encoder_cfg.name.split('-')[1]
 
-        self.backbone = EfficientNet.from_pretrained(encoder_cfg.NAME)
+        self.backbone = EfficientNet.from_pretrained(encoder_cfg.name)
         self.delete_unused_layers()
 
         if self.downsample == 16:

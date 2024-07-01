@@ -7,23 +7,8 @@ from src.models.layers.temporal import Bottleneck3D, TemporalBlock
 class TemporalModel(nn.Module):
     def __init__(
             self, cfg_temporal_model : DictConfig, in_channels, receptive_field, input_shape):
-        """
-        Initializes a TemporalModel object.
-
-        Args:
-            in_channels (int): The number of input channels.
-            receptive_field (int): The receptive field of the model.
-            input_shape (tuple): The shape of the input tensor.
-            start_out_channels (int, optional): The number of output channels for the first temporal layer. Defaults to 64.
-            extra_in_channels (int, optional): The number of extra input channels added to each temporal layer. Defaults to 0.
-            n_spatial_layers_between_temporal_layers (int, optional): The number of spatial layers between each temporal layer. Defaults to 0.
-            use_pyramid_pooling (bool, optional): Whether to use pyramid pooling. Defaults to True.
-
-        Description:
-            This function initializes a TemporalModel object. It creates a sequence of temporal and spatial layers based on the provided parameters. The number of temporal layers is determined by the receptive field of the model. Each temporal layer is followed by a sequence of spatial layers. The number of spatial layers is determined by the `n_spatial_layers_between_temporal_layers` parameter. The output channels of each temporal layer are incremented by the `extra_in_channels` parameter. The final number of output channels is stored in the `out_channels` attribute. The sequence of temporal and spatial layers is stored in the `model` attribute.
-        """
-
         super().__init__()
+
         self.cfg_temporal_model = cfg_temporal_model
         self.receptive_field = receptive_field
         n_temporal_layers = receptive_field - 1
@@ -34,17 +19,18 @@ class TemporalModel(nn.Module):
         block_in_channels = in_channels
         block_out_channels = self.cfg_temporal_model.start_out_channels
 
+        self.use_pyramid_pooling = self.cfg_temporal_model.use_pyramid_pooling
         for _ in range(n_temporal_layers):
-            if use_pyramid_pooling:
-                use_pyramid_pooling = True
+            if self.use_pyramid_pooling:
+                self.use_pyramid_pooling = True
                 pool_sizes = [(2, h, w)]
             else:
-                use_pyramid_pooling = False
+                self.use_pyramid_pooling = False
                 pool_sizes = None
             temporal = TemporalBlock(
                 block_in_channels,
                 block_out_channels,
-                use_pyramid_pooling=use_pyramid_pooling,
+                use_pyramid_pooling=self.use_pyramid_pooling,
                 pool_sizes=pool_sizes,
             )
             spatial = [

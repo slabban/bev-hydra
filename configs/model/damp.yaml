@@ -2,8 +2,10 @@ _target_: src.trainer.trainer.BevLightingModule
 
 model:
   # _target_: src.models.damp.Damp
+  bn_momentum: 0.1
+  instance_flow_enabled: False
+  
   encoder:
-    _partial_: True
     out_channels: 64
     use_depth_distribution: True
     downsample: 8
@@ -22,10 +24,8 @@ model:
     start_out_channels: 64
     extra_in_channels: 0
     inbetween_layers: 0
-    pyramid_pooling: True
+    use_pyramid_pooling: True
     input_egopose: True
 
-    bn_momentum: 0.1
-    instance_flow_enabled: False
 
 

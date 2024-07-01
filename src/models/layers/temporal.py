@@ -245,6 +245,7 @@ class TemporalBlock(nn.Module):
     """
 
     def __init__(self, in_channels, out_channels=None, use_pyramid_pooling=False, pool_sizes=None):
+        super().__init__()
         """
         Initializes a TemporalBlock.
 
