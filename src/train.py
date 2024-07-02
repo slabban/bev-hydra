@@ -2,7 +2,7 @@
 import hydra
 import lightning as L
 import rootutils
-from lightning import LightningDataModule, LightningModule, Trainer
+from lightning import LightningDataModule, LightningModule, Trainer, Callback
 from lightning.pytorch.loggers import Logger
 from omegaconf import DictConfig
 from typing import Any, Dict, List, Optional, Tuple
@@ -30,7 +30,7 @@ from src.utils import (
     RankedLogger,
     extras,
     get_metric_value,
-    # instantiate_callbacks,
+    instantiate_callbacks,
     instantiate_loggers,
     log_hyperparameters,
     task_wrapper,
@@ -62,20 +62,19 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     log.info(f"Instantiating training module <{cfg.model._target_}>")
     model: LightningModule = hydra.utils.instantiate(cfg.model, common_cfg=cfg.common)
 
-    # TODO
-    # log.info("Instantiating callbacks...")
-    # callbacks: List[Callback] = instantiate_callbacks(cfg.get("callbacks"))
+    log.info("Instantiating callbacks...")
+    callbacks: List[Callback] = instantiate_callbacks(cfg.get("callbacks"))
 
     log.info("Instantiating loggers...")
     logger: List[Logger] = instantiate_loggers(cfg.get("logger"))
 
     log.info(f"Instantiating trainer <{cfg.trainer._target_}>")
-    trainer: Trainer = hydra.utils.instantiate(config=cfg.trainer, logger=logger)
+    trainer: Trainer = hydra.utils.instantiate(config=cfg.trainer, logger=logger, callbacks=callbacks)
 
     object_dict = {
         "cfg": cfg,
         "datamodule": datamodule,
-        # "callbacks": callbacks,
+        "callbacks": callbacks,
         "logger": logger,
         "trainer": trainer,
     }

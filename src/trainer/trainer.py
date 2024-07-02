@@ -188,13 +188,13 @@ class BevLightingModule(LightningModule):
         name = f'{prefix}_outputs'
         if prefix == 'val':
             name = name + f'_{batch_idx}'
-        self.logger.experiment.add_video(name, visualisation_video, global_step=self.training_step_count, fps=2)
+        # self.logger.experiment.add_video(name, visualisation_video, global_step=self.training_step_count, fps=2)
 
     def training_step(self, batch, batch_idx):
         output, labels, loss = self.shared_step(batch, True)
         self.training_step_count += 1
-        for key, value in loss.items():
-            self.logger.experiment.add_scalar(key, value, global_step=self.training_step_count)
+        # for key, value in loss.items():
+            # self.logger.experiment.add_scalar(key, value, global_step=self.training_step_count)
 
         self.train_step_outptut = output
         # TODO sort out configs for visualisation
@@ -217,30 +217,30 @@ class BevLightingModule(LightningModule):
         class_names = ['background', 'dynamic']
         if not is_train:
             scores = self.metric_iou_val.compute()
-            for key, value in zip(class_names, scores):
-                self.logger.experiment.add_scalar('val_iou_' + key, value, global_step=self.training_step_count)
+            # for key, value in zip(class_names, scores):
+            #     self.logger.experiment.add_scalar('val_iou_' + key, value, global_step=self.training_step_count)
             self.metric_iou_val.reset()
 
         if not is_train:
             scores = self.metric_panoptic_val.compute()
-            for key, value in scores.items():
-                for instance_name, score in zip(['background', 'vehicles'], value):
-                    if instance_name != 'background':
-                        self.logger.experiment.add_scalar(f'val_{key}_{instance_name}', score.item(),
-                                                          global_step=self.training_step_count)
+            # for key, value in scores.items():
+                # for instance_name, score in zip(['background', 'vehicles'], value):
+                    # if instance_name != 'background':
+                    #     self.logger.experiment.add_scalar(f'val_{key}_{instance_name}', score.item(),
+                    #                                       global_step=self.training_step_count)
             self.metric_panoptic_val.reset()
 
-        self.logger.experiment.add_scalar('segmentation_weight',
-                                          1 / (torch.exp(self.model.segmentation_weight)),
-                                          global_step=self.training_step_count)
-        self.logger.experiment.add_scalar('centerness_weight',
-                                          1 / (2 * torch.exp(self.model.centerness_weight)),
-                                          global_step=self.training_step_count)
-        self.logger.experiment.add_scalar('offset_weight', 1 / (2 * torch.exp(self.model.offset_weight)),
-                                          global_step=self.training_step_count)
-        if self.cfg.INSTANCE_FLOW.ENABLED:
-            self.logger.experiment.add_scalar('flow_weight', 1 / (2 * torch.exp(self.model.flow_weight)),
-                                              global_step=self.training_step_count)
+        # self.logger.experiment.add_scalar('segmentation_weight',
+        #                                   1 / (torch.exp(self.model.segmentation_weight)),
+        #                                   global_step=self.training_step_count)
+        # self.logger.experiment.add_scalar('centerness_weight',
+        #                                   1 / (2 * torch.exp(self.model.centerness_weight)),
+        #                                   global_step=self.training_step_count)
+        # self.logger.experiment.add_scalar('offset_weight', 1 / (2 * torch.exp(self.model.offset_weight)),
+        #                                   global_step=self.training_step_count)
+        # if self.cfg.INSTANCE_FLOW.ENABLED:
+        #     self.logger.experiment.add_scalar('flow_weight', 1 / (2 * torch.exp(self.model.flow_weight)),
+        #                                       global_step=self.training_step_count)
 
     def on_train_epoch_end(self):
         self.shared_epoch_end(self.train_step_outptut, True)
