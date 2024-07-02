@@ -57,6 +57,10 @@ class BevLightingModule(LightningModule):
 
         self.training_step_count = 0
 
+        self.train_step_outptut = None
+        self.val_step_outptut = None
+
+
     def shared_step(self, batch, is_train):
         image = batch['image']
         intrinsics = batch['intrinsics']
@@ -94,16 +98,16 @@ class BevLightingModule(LightningModule):
         loss['centerness_uncertainty'] = 0.5 * self.model.centerness_weight
         loss['offset_uncertainty'] = 0.5 * self.model.offset_weight
 
-        if self.cfg.INSTANCE_FLOW.ENABLED:
-            flow_factor = 1 / (2*torch.exp(self.model.flow_weight))
-            loss['instance_flow'] = flow_factor * self.losses_fn['instance_flow'](
-                output['instance_flow'], labels['flow']
-            )
+        # if self.cfg.INSTANCE_FLOW.ENABLED:
+        #     flow_factor = 1 / (2*torch.exp(self.model.flow_weight))
+        #     loss['instance_flow'] = flow_factor * self.losses_fn['instance_flow'](
+        #         output['instance_flow'], labels['flow']
+        #     )
 
-            loss['flow_uncertainty'] = 0.5 * self.model.flow_weight
+            # loss['flow_uncertainty'] = 0.5 * self.model.flow_weight
 
-        if self.cfg.PROBABILISTIC.ENABLED:
-            loss['probabilistic'] = self.cfg.PROBABILISTIC.WEIGHT * self.losses_fn['probabilistic'](output)
+        # if self.cfg.PROBABILISTIC.ENABLED:
+        #     loss['probabilistic'] = self.cfg.PROBABILISTIC.WEIGHT * self.losses_fn['probabilistic'](output)
 
         # Metrics
         if not is_train:
@@ -164,15 +168,15 @@ class BevLightingModule(LightningModule):
         future_distribution_inputs.append(instance_center_labels)
         future_distribution_inputs.append(instance_offset_labels)
 
-        if self.cfg.INSTANCE_FLOW.ENABLED:
-            instance_flow_labels = cumulative_warp_features_reverse(
-                instance_flow_labels[:, (self.model.receptive_field - 1):],
-                future_egomotion[:, (self.model.receptive_field - 1):],
-                mode='nearest', spatial_extent=self.spatial_extent,
-            ).contiguous()
-            labels['flow'] = instance_flow_labels
+        # if self.cfg.INSTANCE_FLOW.ENABLED:
+        #     instance_flow_labels = cumulative_warp_features_reverse(
+        #         instance_flow_labels[:, (self.model.receptive_field - 1):],
+        #         future_egomotion[:, (self.model.receptive_field - 1):],
+        #         mode='nearest', spatial_extent=self.spatial_extent,
+        #     ).contiguous()
+        #     labels['flow'] = instance_flow_labels
 
-            future_distribution_inputs.append(instance_flow_labels)
+        #     future_distribution_inputs.append(instance_flow_labels)
 
         if len(future_distribution_inputs) > 0:
             future_distribution_inputs = torch.cat(future_distribution_inputs, dim=2)
@@ -192,8 +196,10 @@ class BevLightingModule(LightningModule):
         for key, value in loss.items():
             self.logger.experiment.add_scalar(key, value, global_step=self.training_step_count)
 
-        if self.training_step_count % self.cfg.VIS_INTERVAL == 0:
-            self.visualise(labels, output, batch_idx, prefix='train')
+        self.train_step_outptut = output
+        # TODO sort out configs for visualisation
+        # if self.training_step_count % self.cfg.VIS_INTERVAL == 0:
+        #     self.visualise(labels, output, batch_idx, prefix='train')
         return sum(loss.values())
 
     def validation_step(self, batch, batch_idx):
@@ -201,8 +207,10 @@ class BevLightingModule(LightningModule):
         for key, value in loss.items():
             self.log('val_' + key, value)
 
-        if batch_idx == 0:
-            self.visualise(labels, output, batch_idx, prefix='val')
+        self.val_step_output = output
+        # TODO sort out configs for visualisation
+        # if batch_idx == 0:
+        #     self.visualise(labels, output, batch_idx, prefix='val')
 
     def shared_epoch_end(self, step_outputs, is_train):
         # log per class iou metrics
@@ -234,11 +242,11 @@ class BevLightingModule(LightningModule):
             self.logger.experiment.add_scalar('flow_weight', 1 / (2 * torch.exp(self.model.flow_weight)),
                                               global_step=self.training_step_count)
 
-    def on_train_epoch_end(self, step_outputs):
-        self.shared_epoch_end(step_outputs, True)
+    def on_train_epoch_end(self):
+        self.shared_epoch_end(self.train_step_outptut, True)
 
-    def on_validation_epoch_end(self, step_outputs):
-        self.shared_epoch_end(step_outputs, False)
+    def on_validation_epoch_end(self):
+        self.shared_epoch_end(self.val_step_outptut, False)
 
     def configure_optimizers(self):
         params = self.model.parameters()

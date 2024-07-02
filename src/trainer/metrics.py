@@ -51,7 +51,7 @@ class IntersectionOverUnion(Metric):
               set to the absent_score.
             - The ignored class index is removed from the scores tensor.
         """
-
+        scores = torch.zeros(self.n_classes, device=self.true_positive.device, dtype=torch.float32)
         for class_idx in range(self.n_classes):
             if class_idx == self.ignore_index:
                 continue

@@ -106,6 +106,7 @@ class Encoder(nn.Module):
         multiplies it element-wise with the remaining channels, and returns the result. If use_depth_distribution is False, it unsqueezes the last dimension of x,
         repeats it self.D times along the depth dimension, and returns the result.
         """
+        x = self.get_features(x)  # get feature vector
         x = self.depth_layer(x)  # feature and depth head
 
         if self.use_depth_distribution:
