@@ -15,7 +15,7 @@ accelerator: cpu
 devices: 1
 
 # 16 bit precision or 32 bit
-precision: 16
+precision: 32
 
 gradient_clip_val: 5
 
