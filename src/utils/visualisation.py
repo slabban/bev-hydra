@@ -202,7 +202,7 @@ def plot_instance_map(instance_image, instance_map, instance_colours=None, bg_im
     return plot_image
 
 
-def visualise_output(labels, output, cfg):
+def visualise_output(labels, output, is_instance_flow_enabled):
     semantic_colours = np.array([[255, 255, 255], [0, 0, 0]], dtype=np.uint8)
 
     consistent_instance_seg = predict_instance_segmentation_and_trajectories(
@@ -224,7 +224,7 @@ def visualise_output(labels, output, cfg):
         semantic_plot = semantic_colours[semantic_seg[b, t][::-1, ::-1]]
         semantic_plot = make_contour(semantic_plot)
 
-        if cfg.INSTANCE_FLOW.ENABLED:
+        if is_instance_flow_enabled:
             future_flow_plot = labels['flow'][b, t].cpu().numpy()
             future_flow_plot[:, semantic_seg[b, t] != 1] = 0
             future_flow_plot = flow_to_image(future_flow_plot)[::-1, ::-1]
@@ -253,7 +253,7 @@ def visualise_output(labels, output, cfg):
         semantic_plot = semantic_colours[semantic_seg[b, t][::-1, ::-1]]
         semantic_plot = make_contour(semantic_plot)
 
-        if cfg.INSTANCE_FLOW.ENABLED:
+        if is_instance_flow_enabled:
             future_flow_plot = output['instance_flow'][b, t].detach().cpu().numpy()
             future_flow_plot[:, semantic_seg[b, t] != 1] = 0
             future_flow_plot = flow_to_image(future_flow_plot)[::-1, ::-1]
