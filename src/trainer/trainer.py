@@ -217,8 +217,10 @@ class BevLightingModule(LightningModule):
         class_names = ['background', 'dynamic']
         if not is_train:
             scores = self.metric_iou_val.compute()
-            # for key, value in zip(class_names, scores):
-            #     self.logger.experiment.add_scalar('val_iou_' + key, value, global_step=self.training_step_count)
+            for key, value in zip(class_names, scores):
+                # self.logger.experiment.add_scalar('val_iou_' + key, value, global_step=self.training_step_count)
+                self.log('val_iou_' + key, value)
+
             self.metric_iou_val.reset()
 
         if not is_train:

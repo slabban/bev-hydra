@@ -280,6 +280,7 @@ def predict_instance_segmentation_and_trajectories(
     foreground_masks = preds.squeeze(2) == vehicles_id
 
     batch_size, seq_len = preds.shape[:2]
+    print(f'batch_size: {batch_size}, seq_len: {seq_len}')
     pred_inst = []
     for b in range(batch_size):
         pred_inst_batch = []

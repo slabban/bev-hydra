@@ -10,6 +10,10 @@ max_epochs: 5
 
 sync_batchnorm: True
 
+num_sanity_val_steps: 1
+
+limit_train_batches: null
+limit_val_batches: null
 
 accelerator: cpu
 devices: 1

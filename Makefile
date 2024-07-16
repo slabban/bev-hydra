@@ -26,5 +26,8 @@ test: ## Run not slow tests
 test-full: ## Run all tests
 	pytest
 
+smoke-test-simple: ## Run smoke tests
+	python src/train.py trainer.max_epochs=1 trainer.limit_train_batches=1 trainer.limit_val_batches=1
+
 train: ## Train the model
 	python src/train.py
