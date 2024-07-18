@@ -6,7 +6,7 @@ from omegaconf import DictConfig
 
 from src.models.damp import Damp
 from src.trainer.components.losses import SpatialRegressionLoss, SegmentationLoss
-from src.trainer.metrics import IntersectionOverUnion, PanopticMetric
+from src.trainer.metrics import IntersectionOverUnion
 from src.utils.geometry import cumulative_warp_features_reverse
 from src.utils.instance import predict_instance_segmentation_and_trajectories
 from src.utils.visualisation import visualise_output
@@ -53,7 +53,6 @@ class BevLightingModule(LightningModule):
         self.model.centerness_weight = nn.Parameter(torch.tensor(0.0), requires_grad=True)
         self.model.offset_weight = nn.Parameter(torch.tensor(0.0), requires_grad=True)
 
-        self.metric_panoptic_val = PanopticMetric(n_classes=self.n_classes)
 
         self.training_step_count = 0
 
@@ -104,11 +103,10 @@ class BevLightingModule(LightningModule):
             seg_prediction = torch.argmax(seg_prediction, dim=2, keepdims=True)
             self.metric_iou_val(seg_prediction, labels['segmentation'])
 
-            pred_consistent_instance_seg = predict_instance_segmentation_and_trajectories(
-                output, compute_matched_centers=False
-            )
-
-            self.metric_panoptic_val(pred_consistent_instance_seg, labels['instance'])
+            class_names = ['background', 'dynamic']
+            scores = self.metric_iou_val.compute()
+            for key, value in zip(class_names, scores):
+                self.log('val_iou_' + key, value, on_step=True)
 
         return output, labels, loss
 
@@ -192,22 +190,9 @@ class BevLightingModule(LightningModule):
         #     self.visualise(labels, output, batch_idx, prefix='val')
 
     def shared_epoch_end(self, step_outputs, is_train):
-        # log per class iou metrics
-        class_names = ['background', 'dynamic']
-        if not is_train:
-            scores = self.metric_iou_val.compute()
-            for key, value in zip(class_names, scores):
-                self.log('val_iou_' + key, value)
+        # log per class iou metric
 
-            self.metric_iou_val.reset()
-
-        if not is_train:
-            scores = self.metric_panoptic_val.compute()
-            for key, value in scores.items():
-                for instance_name, score in zip(['background', 'vehicles'], value):
-                    if instance_name != 'background':
-                        self.log(f'val_{key}_{instance_name}', score.item())
-            self.metric_panoptic_val.reset()
+        self.metric_iou_val.reset()
 
         self.log('segmentation_weight',
                                           1 / (torch.exp(self.model.segmentation_weight))
