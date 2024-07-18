@@ -73,6 +73,7 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
 
     object_dict = {
         "cfg": cfg,
+        "model": model,
         "datamodule": datamodule,
         "callbacks": callbacks,
         "logger": logger,
@@ -121,6 +122,7 @@ def main(cfg: DictConfig) -> Optional[float]:
     metric_dict, _ = train(cfg)
 
     # safely retrieve metric value for hydra-based hyperparameter optimization
+    # This is not needed right now, but see hprarams config for more info
     metric_value = get_metric_value(
         metric_dict=metric_dict, metric_name=cfg.get("optimized_metric")
     )

@@ -9,7 +9,7 @@ defaults:
   - common: damp
   - model: damp 
   - callbacks: default
-  - logger: null # set logger here or use command line (e.g. `python train.py logger=tensorboard`)
+  - logger: tensorboard # set logger here or use command line (e.g. `python train.py logger=tensorboard`)
   - trainer: gpu # set trainer here or use command line (e.g. `python train.py trainer=gpu`)
   - paths: default 
   - extras: default

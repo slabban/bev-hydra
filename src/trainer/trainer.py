@@ -98,17 +98,6 @@ class BevLightingModule(LightningModule):
         loss['centerness_uncertainty'] = 0.5 * self.model.centerness_weight
         loss['offset_uncertainty'] = 0.5 * self.model.offset_weight
 
-        # if self.cfg.INSTANCE_FLOW.ENABLED:
-        #     flow_factor = 1 / (2*torch.exp(self.model.flow_weight))
-        #     loss['instance_flow'] = flow_factor * self.losses_fn['instance_flow'](
-        #         output['instance_flow'], labels['flow']
-        #     )
-
-            # loss['flow_uncertainty'] = 0.5 * self.model.flow_weight
-
-        # if self.cfg.PROBABILISTIC.ENABLED:
-        #     loss['probabilistic'] = self.cfg.PROBABILISTIC.WEIGHT * self.losses_fn['probabilistic'](output)
-
         # Metrics
         if not is_train:
             seg_prediction = output['segmentation'].detach()
@@ -168,16 +157,6 @@ class BevLightingModule(LightningModule):
         future_distribution_inputs.append(instance_center_labels)
         future_distribution_inputs.append(instance_offset_labels)
 
-        # if self.cfg.INSTANCE_FLOW.ENABLED:
-        #     instance_flow_labels = cumulative_warp_features_reverse(
-        #         instance_flow_labels[:, (self.model.receptive_field - 1):],
-        #         future_egomotion[:, (self.model.receptive_field - 1):],
-        #         mode='nearest', spatial_extent=self.spatial_extent,
-        #     ).contiguous()
-        #     labels['flow'] = instance_flow_labels
-
-        #     future_distribution_inputs.append(instance_flow_labels)
-
         if len(future_distribution_inputs) > 0:
             future_distribution_inputs = torch.cat(future_distribution_inputs, dim=2)
 
@@ -193,8 +172,8 @@ class BevLightingModule(LightningModule):
     def training_step(self, batch, batch_idx):
         output, labels, loss = self.shared_step(batch, True)
         self.training_step_count += 1
-        # for key, value in loss.items():
-            # self.logger.experiment.add_scalar(key, value, global_step=self.training_step_count)
+        for key, value in loss.items():
+            self.log(key, value)
 
         self.train_step_outptut = output
         # TODO sort out configs for visualisation
@@ -218,31 +197,25 @@ class BevLightingModule(LightningModule):
         if not is_train:
             scores = self.metric_iou_val.compute()
             for key, value in zip(class_names, scores):
-                # self.logger.experiment.add_scalar('val_iou_' + key, value, global_step=self.training_step_count)
                 self.log('val_iou_' + key, value)
 
             self.metric_iou_val.reset()
 
         if not is_train:
             scores = self.metric_panoptic_val.compute()
-            # for key, value in scores.items():
-                # for instance_name, score in zip(['background', 'vehicles'], value):
-                    # if instance_name != 'background':
-                    #     self.logger.experiment.add_scalar(f'val_{key}_{instance_name}', score.item(),
-                    #                                       global_step=self.training_step_count)
+            for key, value in scores.items():
+                for instance_name, score in zip(['background', 'vehicles'], value):
+                    if instance_name != 'background':
+                        self.log(f'val_{key}_{instance_name}', score.item())
             self.metric_panoptic_val.reset()
 
-        # self.logger.experiment.add_scalar('segmentation_weight',
-        #                                   1 / (torch.exp(self.model.segmentation_weight)),
-        #                                   global_step=self.training_step_count)
-        # self.logger.experiment.add_scalar('centerness_weight',
-        #                                   1 / (2 * torch.exp(self.model.centerness_weight)),
-        #                                   global_step=self.training_step_count)
-        # self.logger.experiment.add_scalar('offset_weight', 1 / (2 * torch.exp(self.model.offset_weight)),
-        #                                   global_step=self.training_step_count)
-        # if self.cfg.INSTANCE_FLOW.ENABLED:
-        #     self.logger.experiment.add_scalar('flow_weight', 1 / (2 * torch.exp(self.model.flow_weight)),
-        #                                       global_step=self.training_step_count)
+        self.log('segmentation_weight',
+                                          1 / (torch.exp(self.model.segmentation_weight))
+                                          )
+        self.log('centerness_weight',
+                                          1 / (2 * torch.exp(self.model.centerness_weight))
+                                          )
+        self.log('offset_weight', 1 / (2 * torch.exp(self.model.offset_weight)))
 
     def on_train_epoch_end(self):
         self.shared_epoch_end(self.train_step_outptut, True)
