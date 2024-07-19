@@ -103,11 +103,6 @@ class BevLightingModule(LightningModule):
             seg_prediction = torch.argmax(seg_prediction, dim=2, keepdims=True)
             self.metric_iou_val(seg_prediction, labels['segmentation'])
 
-            class_names = ['background', 'dynamic']
-            scores = self.metric_iou_val.compute()
-            for key, value in zip(class_names, scores):
-                self.log('val_iou_' + key, value, on_step=True)
-
         return output, labels, loss
 
     def prepare_future_labels(self, batch):
@@ -191,8 +186,13 @@ class BevLightingModule(LightningModule):
 
     def shared_epoch_end(self, step_outputs, is_train):
         # log per class iou metric
+        if not is_train: 
+            class_names = ['background', 'dynamic']
+            scores = self.metric_iou_val.compute()
+            for key, value in zip(class_names, scores):
+                self.log('val_iou_' + key, value)
+            self.metric_iou_val.reset()
 
-        self.metric_iou_val.reset()
 
         self.log('segmentation_weight',
                                           1 / (torch.exp(self.model.segmentation_weight))
