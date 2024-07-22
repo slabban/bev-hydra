@@ -1,7 +1,7 @@
 _target_: src.data.data_module.DampDataModule
 data_root: ${paths.data_dir}
 version: 'trainval'
-batch_size: 1 # Needs to be divisible by the number of devices (e.g., if in a distributed setup)
+batch_size: 2 # Needs to be divisible by the number of devices (e.g., if in a distributed setup)
 num_workers: 4
 pin_memory: True
 filter_invisible_vehicles: True
