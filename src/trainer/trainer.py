@@ -12,12 +12,13 @@ from src.utils.instance import predict_instance_segmentation_and_trajectories
 from src.utils.visualisation import visualise_output
 
 class BevLightingModule(LightningModule):
-    def __init__(self, lr, weight_decay, model, common_cfg : DictConfig):
+    def __init__(self, lr, weight_decay, model, visualization_interval, common_cfg : DictConfig):
         super().__init__()
         
         self.lr = lr
         self.weight_decay = weight_decay
         self.model = model
+        self.visualization_interval = visualization_interval
         self.common_cfg = common_cfg
         self.n_classes = len(self.common_cfg.semantic_segmentation.weights)
 
@@ -156,11 +157,14 @@ class BevLightingModule(LightningModule):
         return labels, future_distribution_inputs
 
     def visualise(self, labels, output, batch_idx, prefix='train'):
-        visualisation_video = visualise_output(labels, output, self.cfg)
+        visualisation_video = visualise_output(labels, output)
         name = f'{prefix}_outputs'
         if prefix == 'val':
             name = name + f'_{batch_idx}'
-        # self.logger.experiment.add_video(name, visualisation_video, global_step=self.training_step_count, fps=2)
+        
+        tensorboard = self.logger.experiment
+        
+        tensorboard.add_video(name, visualisation_video)
 
     def training_step(self, batch, batch_idx):
         output, labels, loss = self.shared_step(batch, True)
@@ -169,9 +173,8 @@ class BevLightingModule(LightningModule):
             self.log(key, value)
 
         self.train_step_outptut = output
-        # TODO sort out configs for visualisation
-        # if self.training_step_count % self.cfg.VIS_INTERVAL == 0:
-        #     self.visualise(labels, output, batch_idx, prefix='train')
+        if self.training_step_count % self.visualization_interval == 0:
+            self.visualise(labels, output, batch_idx, prefix='train')
         return sum(loss.values())
 
     def validation_step(self, batch, batch_idx):
@@ -180,9 +183,8 @@ class BevLightingModule(LightningModule):
             self.log('val_' + key, value)
 
         self.val_step_output = output
-        # TODO sort out configs for visualisation
-        # if batch_idx == 0:
-        #     self.visualise(labels, output, batch_idx, prefix='val')
+        if batch_idx == 0:
+            self.visualise(labels, output, batch_idx, prefix='val')
 
     def shared_epoch_end(self, step_outputs, is_train):
         # log per class iou metric
@@ -207,6 +209,8 @@ class BevLightingModule(LightningModule):
 
     def on_validation_epoch_end(self):
         self.shared_epoch_end(self.val_step_outptut, False)
+
+
 
     def configure_optimizers(self):
         params = self.model.parameters()

@@ -202,7 +202,7 @@ def plot_instance_map(instance_image, instance_map, instance_colours=None, bg_im
     return plot_image
 
 
-def visualise_output(labels, output, is_instance_flow_enabled):
+def visualise_output(labels, output):
     semantic_colours = np.array([[255, 255, 255], [0, 0, 0]], dtype=np.uint8)
 
     consistent_instance_seg = predict_instance_segmentation_and_trajectories(
@@ -224,14 +224,6 @@ def visualise_output(labels, output, is_instance_flow_enabled):
         semantic_plot = semantic_colours[semantic_seg[b, t][::-1, ::-1]]
         semantic_plot = make_contour(semantic_plot)
 
-        if is_instance_flow_enabled:
-            future_flow_plot = labels['flow'][b, t].cpu().numpy()
-            future_flow_plot[:, semantic_seg[b, t] != 1] = 0
-            future_flow_plot = flow_to_image(future_flow_plot)[::-1, ::-1]
-            future_flow_plot = make_contour(future_flow_plot)
-        else:
-            future_flow_plot = np.zeros_like(semantic_plot)
-
         center_plot = heatmap_image(labels['centerness'][b, t, 0].cpu().numpy())[::-1, ::-1]
         center_plot = make_contour(center_plot)
 
@@ -240,7 +232,7 @@ def visualise_output(labels, output, is_instance_flow_enabled):
         offset_plot = flow_to_image(offset_plot)[::-1, ::-1]
         offset_plot = make_contour(offset_plot)
 
-        out_t.append(np.concatenate([instance_plot, future_flow_plot,
+        out_t.append(np.concatenate([instance_plot,
                                      semantic_plot, center_plot, offset_plot], axis=0))
 
         # Predictions
@@ -253,13 +245,6 @@ def visualise_output(labels, output, is_instance_flow_enabled):
         semantic_plot = semantic_colours[semantic_seg[b, t][::-1, ::-1]]
         semantic_plot = make_contour(semantic_plot)
 
-        if is_instance_flow_enabled:
-            future_flow_plot = output['instance_flow'][b, t].detach().cpu().numpy()
-            future_flow_plot[:, semantic_seg[b, t] != 1] = 0
-            future_flow_plot = flow_to_image(future_flow_plot)[::-1, ::-1]
-            future_flow_plot = make_contour(future_flow_plot)
-        else:
-            future_flow_plot = np.zeros_like(semantic_plot)
 
         center_plot = heatmap_image(output['instance_center'][b, t, 0].detach().cpu().numpy())[::-1, ::-1]
         center_plot = make_contour(center_plot)
@@ -269,7 +254,7 @@ def visualise_output(labels, output, is_instance_flow_enabled):
         offset_plot = flow_to_image(offset_plot)[::-1, ::-1]
         offset_plot = make_contour(offset_plot)
 
-        out_t.append(np.concatenate([instance_plot, future_flow_plot,
+        out_t.append(np.concatenate([instance_plot,
                                      semantic_plot, center_plot, offset_plot], axis=0))
         out_t = np.concatenate(out_t, axis=1)
         # Shape (C, H, W)
