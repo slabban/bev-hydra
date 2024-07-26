@@ -4,7 +4,7 @@ semantic_segmentation:
   top_k_ratio: 0.25
 
 receptive_field: 3  # how many frames of temporal context (1 for single timeframe)
-future_discount: 0.95
+future_discount: 1.0
 ignore_index: 255
 
 # LIFT, data, model, trainer

@@ -14,7 +14,7 @@ model:
     out_channels: 64
     use_depth_distribution: True
     downsample: 8
-    name: efficientnet-b0
+    name: efficientnet-b4
 
   image:
     final_dim: [224, 480]

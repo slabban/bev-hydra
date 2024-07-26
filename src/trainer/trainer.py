@@ -175,7 +175,10 @@ class BevLightingModule(LightningModule):
         self.train_step_outptut = output
         if self.training_step_count % self.visualization_interval == 0:
             self.visualise(labels, output, batch_idx, prefix='train')
-        return sum(loss.values())
+        
+        total_loss = sum(loss.values())
+        self.log('total_loss', total_loss)
+        return total_loss
 
     def validation_step(self, batch, batch_idx):
         output, labels, loss = self.shared_step(batch, False)
@@ -185,6 +188,8 @@ class BevLightingModule(LightningModule):
         self.val_step_output = output
         if batch_idx == 0:
             self.visualise(labels, output, batch_idx, prefix='val')
+        
+        self.log('val_total_loss', sum(loss.values()))
 
     def shared_epoch_end(self, step_outputs, is_train):
         # log per class iou metric
