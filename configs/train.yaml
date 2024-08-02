@@ -45,7 +45,7 @@ train: True
 test: False
 
 # simply provide checkpoint path to resume training
-ckpt_path: "last.ckpt"
+ckpt_path: null # "last.ckpt"
 
 # seed for random number generators in pytorch, numpy and python.random
 seed: null
