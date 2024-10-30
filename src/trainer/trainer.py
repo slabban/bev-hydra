@@ -6,18 +6,19 @@ from omegaconf import DictConfig
 
 from src.models.damp import Damp
 from src.trainer.components.losses import SpatialRegressionLoss, SegmentationLoss
-from src.trainer.metrics import IntersectionOverUnion, PanopticMetric
+from src.trainer.metrics import IntersectionOverUnion
 from src.utils.geometry import cumulative_warp_features_reverse
 from src.utils.instance import predict_instance_segmentation_and_trajectories
 from src.utils.visualisation import visualise_output
 
 class BevLightingModule(LightningModule):
-    def __init__(self, lr, weight_decay, model, common_cfg : DictConfig):
+    def __init__(self, lr, weight_decay, model, visualization_interval, common_cfg : DictConfig):
         super().__init__()
         
         self.lr = lr
         self.weight_decay = weight_decay
         self.model = model
+        self.visualization_interval = visualization_interval
         self.common_cfg = common_cfg
         self.n_classes = len(self.common_cfg.semantic_segmentation.weights)
 
@@ -53,7 +54,6 @@ class BevLightingModule(LightningModule):
         self.model.centerness_weight = nn.Parameter(torch.tensor(0.0), requires_grad=True)
         self.model.offset_weight = nn.Parameter(torch.tensor(0.0), requires_grad=True)
 
-        self.metric_panoptic_val = PanopticMetric(n_classes=self.n_classes)
 
         self.training_step_count = 0
 
@@ -98,28 +98,11 @@ class BevLightingModule(LightningModule):
         loss['centerness_uncertainty'] = 0.5 * self.model.centerness_weight
         loss['offset_uncertainty'] = 0.5 * self.model.offset_weight
 
-        # if self.cfg.INSTANCE_FLOW.ENABLED:
-        #     flow_factor = 1 / (2*torch.exp(self.model.flow_weight))
-        #     loss['instance_flow'] = flow_factor * self.losses_fn['instance_flow'](
-        #         output['instance_flow'], labels['flow']
-        #     )
-
-            # loss['flow_uncertainty'] = 0.5 * self.model.flow_weight
-
-        # if self.cfg.PROBABILISTIC.ENABLED:
-        #     loss['probabilistic'] = self.cfg.PROBABILISTIC.WEIGHT * self.losses_fn['probabilistic'](output)
-
         # Metrics
         if not is_train:
             seg_prediction = output['segmentation'].detach()
             seg_prediction = torch.argmax(seg_prediction, dim=2, keepdims=True)
             self.metric_iou_val(seg_prediction, labels['segmentation'])
-
-            pred_consistent_instance_seg = predict_instance_segmentation_and_trajectories(
-                output, compute_matched_centers=False
-            )
-
-            self.metric_panoptic_val(pred_consistent_instance_seg, labels['instance'])
 
         return output, labels, loss
 
@@ -168,39 +151,34 @@ class BevLightingModule(LightningModule):
         future_distribution_inputs.append(instance_center_labels)
         future_distribution_inputs.append(instance_offset_labels)
 
-        # if self.cfg.INSTANCE_FLOW.ENABLED:
-        #     instance_flow_labels = cumulative_warp_features_reverse(
-        #         instance_flow_labels[:, (self.model.receptive_field - 1):],
-        #         future_egomotion[:, (self.model.receptive_field - 1):],
-        #         mode='nearest', spatial_extent=self.spatial_extent,
-        #     ).contiguous()
-        #     labels['flow'] = instance_flow_labels
-
-        #     future_distribution_inputs.append(instance_flow_labels)
-
         if len(future_distribution_inputs) > 0:
             future_distribution_inputs = torch.cat(future_distribution_inputs, dim=2)
 
         return labels, future_distribution_inputs
 
     def visualise(self, labels, output, batch_idx, prefix='train'):
-        visualisation_video = visualise_output(labels, output, self.cfg)
+        visualisation_video = visualise_output(labels, output)
         name = f'{prefix}_outputs'
         if prefix == 'val':
             name = name + f'_{batch_idx}'
-        # self.logger.experiment.add_video(name, visualisation_video, global_step=self.training_step_count, fps=2)
+        
+        tensorboard = self.logger.experiment
+        
+        tensorboard.add_video(name, visualisation_video)
 
     def training_step(self, batch, batch_idx):
         output, labels, loss = self.shared_step(batch, True)
         self.training_step_count += 1
-        # for key, value in loss.items():
-            # self.logger.experiment.add_scalar(key, value, global_step=self.training_step_count)
+        for key, value in loss.items():
+            self.log(key, value)
 
         self.train_step_outptut = output
-        # TODO sort out configs for visualisation
-        # if self.training_step_count % self.cfg.VIS_INTERVAL == 0:
-        #     self.visualise(labels, output, batch_idx, prefix='train')
-        return sum(loss.values())
+        if self.training_step_count % self.visualization_interval == 0:
+            self.visualise(labels, output, batch_idx, prefix='train')
+        
+        total_loss = sum(loss.values())
+        self.log('total_loss', total_loss)
+        return total_loss
 
     def validation_step(self, batch, batch_idx):
         output, labels, loss = self.shared_step(batch, False)
@@ -208,45 +186,36 @@ class BevLightingModule(LightningModule):
             self.log('val_' + key, value)
 
         self.val_step_output = output
-        # TODO sort out configs for visualisation
-        # if batch_idx == 0:
-        #     self.visualise(labels, output, batch_idx, prefix='val')
+        if batch_idx == 0:
+            self.visualise(labels, output, batch_idx, prefix='val')
+        
+        self.log('val_total_loss', sum(loss.values()))
 
     def shared_epoch_end(self, step_outputs, is_train):
-        # log per class iou metrics
-        class_names = ['background', 'dynamic']
-        if not is_train:
+        # log per class iou metric
+        if not is_train: 
+            class_names = ['background', 'dynamic']
             scores = self.metric_iou_val.compute()
-            # for key, value in zip(class_names, scores):
-            #     self.logger.experiment.add_scalar('val_iou_' + key, value, global_step=self.training_step_count)
+            for key, value in zip(class_names, scores):
+                self.log('val_iou_' + key, value)
             self.metric_iou_val.reset()
 
-        if not is_train:
-            scores = self.metric_panoptic_val.compute()
-            # for key, value in scores.items():
-                # for instance_name, score in zip(['background', 'vehicles'], value):
-                    # if instance_name != 'background':
-                    #     self.logger.experiment.add_scalar(f'val_{key}_{instance_name}', score.item(),
-                    #                                       global_step=self.training_step_count)
-            self.metric_panoptic_val.reset()
 
-        # self.logger.experiment.add_scalar('segmentation_weight',
-        #                                   1 / (torch.exp(self.model.segmentation_weight)),
-        #                                   global_step=self.training_step_count)
-        # self.logger.experiment.add_scalar('centerness_weight',
-        #                                   1 / (2 * torch.exp(self.model.centerness_weight)),
-        #                                   global_step=self.training_step_count)
-        # self.logger.experiment.add_scalar('offset_weight', 1 / (2 * torch.exp(self.model.offset_weight)),
-        #                                   global_step=self.training_step_count)
-        # if self.cfg.INSTANCE_FLOW.ENABLED:
-        #     self.logger.experiment.add_scalar('flow_weight', 1 / (2 * torch.exp(self.model.flow_weight)),
-        #                                       global_step=self.training_step_count)
+        self.log('segmentation_weight',
+                                          1 / (torch.exp(self.model.segmentation_weight))
+                                          )
+        self.log('centerness_weight',
+                                          1 / (2 * torch.exp(self.model.centerness_weight))
+                                          )
+        self.log('offset_weight', 1 / (2 * torch.exp(self.model.offset_weight)))
 
     def on_train_epoch_end(self):
         self.shared_epoch_end(self.train_step_outptut, True)
 
     def on_validation_epoch_end(self):
         self.shared_epoch_end(self.val_step_outptut, False)
+
+
 
     def configure_optimizers(self):
         params = self.model.parameters()

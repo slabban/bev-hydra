@@ -26,5 +26,11 @@ test: ## Run not slow tests
 test-full: ## Run all tests
 	pytest
 
+smoke-test-simple: ## Run smoke tests
+	python src/train.py trainer.fast_dev_run=True
+
+overfit-test: ## Run overfit test
+	python src/train.py trainer.max_epochs=1000 trainer.overfit_batches=1 trainer.log_every_n_steps=1 model.visualization_interval=1 
+
 train: ## Train the model
 	python src/train.py

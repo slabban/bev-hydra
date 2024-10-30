@@ -3,6 +3,7 @@ _target_: src.trainer.trainer.BevLightingModule
 # optimizer
 lr: 3e-4
 weight_decay: 1e-7
+visualization_interval: 500
 
 model:
   # _target_: src.models.damp.Damp
@@ -13,7 +14,7 @@ model:
     out_channels: 64
     use_depth_distribution: True
     downsample: 8
-    name: efficientnet-b0
+    name: efficientnet-b4
 
   image:
     final_dim: [224, 480]
