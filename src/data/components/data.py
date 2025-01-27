@@ -39,7 +39,7 @@ class FuturePredictionDataset(torch.utils.data.Dataset):
         self.nusc = NuScenes(version='v1.0-{}'.format(self.version), dataroot=self.dataroot, verbose=False)
         self.scenes = self.get_scenes()
         self.ixes = self.prepro()
-        self.indices = self.get_indices()
+        self.indices = self.get_valid_indices()
 
         # Image resizing and cropping
         self.augmentation_parameters = self.get_resizing_and_cropping_parameters()
@@ -75,40 +75,40 @@ class FuturePredictionDataset(torch.utils.data.Dataset):
         return scenes
 
     def prepro(self):
-        samples = [samp for samp in self.nusc.sample]
-
-        # remove samples that aren't in this split
-        samples = [samp for samp in samples if self.nusc.get('scene', samp['scene_token'])['name'] in self.scenes]
-
-        # sort by scene, timestamp (only to make chronological viz easier)
+        """Preprocess dataset by filtering out samples not in the current scene split
+        and sorting them by scene and timestamp."""
+        samples = [samp for samp in self.nusc.sample if self.nusc.get('scene', samp['scene_token'])['name'] in self.scenes]
         samples.sort(key=lambda x: (x['scene_token'], x['timestamp']))
-
         return samples
 
-    def get_indices(self):
-        indices = []
-        for index in range(len(self.ixes)):
-            is_valid_data = True
-            previous_rec = None
-            current_indices = []
+    def get_valid_indices(self) -> np.ndarray:
+        """Return a list of valid indices for the dataset.
+
+        The function creates a list of valid index sequences where each sequence
+        contains the indices of the records that belong to the same scene and
+        are within the same time window as the first record in the sequence.
+
+        Returns:
+            indices (np.ndarray): A 2D numpy array where each row represents a
+                valid index sequence.
+        """
+        indices = []  # Initialize an empty list to store valid index sequences
+        for start_index in range(len(self.ixes)):
+            current_indices = []  # List to hold indices of the current valid sequence
+            previous_scene_token = None  # Store the scene token of the previous record
             for t in range(self.sequence_length):
-                index_t = index + t
-                # Going over the dataset size limit.
-                if index_t >= len(self.ixes):
-                    is_valid_data = False
+                index = start_index + t
+                if index >= len(self.ixes):
                     break
-                rec = self.ixes[index_t]
-                # Check if scene is the same
-                if (previous_rec is not None) and (rec['scene_token'] != previous_rec['scene_token']):
-                    is_valid_data = False
+                record = self.ixes[index]
+                if previous_scene_token is not None and record['scene_token'] != previous_scene_token:
+                    # If the current record is from a different scene, break the loop
                     break
-
-                current_indices.append(index_t)
-                previous_rec = rec
-
-            if is_valid_data:
+                current_indices.append(index)
+                previous_scene_token = record['scene_token']
+            if len(current_indices) == self.sequence_length:
+                # If the sequence length is equal to the receptive field, append it to the list
                 indices.append(current_indices)
-
         return np.asarray(indices)
 
     def get_resizing_and_cropping_parameters(self):
